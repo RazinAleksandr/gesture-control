@@ -67,6 +67,8 @@
   </tr>
 </table>
 
+<p align="center"><img src="docs/toast-ru.png" width="360" alt="toast"><br><sub><b>Плашка вкл/выкл</b> — появляется сверху, когда показываете 👍.</sub></p>
+
 ## 🚀 Установка
 
 1. **Скачайте** [`GestureControl-macOS.zip`](https://github.com/RazinAleksandr/gesture-control/releases/latest/download/GestureControl-macOS.zip), распакуйте и перетащите **Gesture Control** в «Программы».

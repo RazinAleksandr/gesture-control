@@ -85,12 +85,45 @@ private enum PickerTarget: Equatable {
 
     init() {}
 
+    // MARK: Demo capture (README screenshots): fake windows, pointer and ring set directly; nothing fires.
+    private var demoButtons = false
+
+    @discardableResult func demoOpen(count: Int) -> Int {
+        guard let screen = WindowPicker.targetScreen() else { return 0 }
+        windows = WindowPicker.fakeWindows(count: count)
+        demoButtons = true
+        screenSize = screen.frame.size
+        screenScale = screen.backingScaleFactor
+        resetDwell()
+        let panel = ensurePanel()
+        panel.setFrame(screen.frame, display: false)
+        rebuildCanvas()
+        canvas.setPointer(nil)
+        panel.alphaValue = 1
+        panel.orderFrontRegardless()
+        isOpen = true
+        return windows.count
+    }
+
+    func demoSet(pointer p: CGPoint, ring: CGFloat) {
+        guard isOpen else { return }
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        let lp = canvas.toLayer(p)
+        canvas.setPointer(lp)
+        let t = canvas.resolve(lp, current: target)
+        if t != target { target = t; canvas.setTarget(t, animated: false) }
+        canvas.setPinch(ring)
+        CATransaction.commit()
+    }
+
     /// Enumerate windows and show the overlay on the screen that contains the mouse cursor (else main screen).
     /// Returns number of windows; if 0, does NOT open.
     @discardableResult func open() -> Int {
         let list = WindowPicker.listWindows()
         guard !list.isEmpty, let screen = WindowPicker.targetScreen() else { return 0 }
         windows = list
+        demoButtons = false
         screenSize = screen.frame.size
         screenScale = screen.backingScaleFactor
         resetDwell()
@@ -290,7 +323,7 @@ private enum PickerTarget: Equatable {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         canvas.root.frame = CGRect(origin: .zero, size: screenSize)
-        canvas.build(windows: windows, buttons: windows.map { $0.axWindow != nil }, size: screenSize, scale: screenScale)
+        canvas.build(windows: windows, buttons: windows.map { demoButtons || $0.axWindow != nil }, size: screenSize, scale: screenScale)
         canvas.setPinch(0)
         CATransaction.commit()
     }
@@ -366,6 +399,7 @@ private enum PickerTarget: Equatable {
         p.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
         p.hidesOnDeactivate = false
         p.isFloatingPanel = true
+        p.level = .screenSaver        // set after isFloatingPanel, which resets the level to .floating
         p.becomesKeyOnlyIfNeeded = true
         p.isReleasedWhenClosed = false
         p.animationBehavior = .none

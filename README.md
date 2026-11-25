@@ -68,6 +68,8 @@
   </tr>
 </table>
 
+<p align="center"><img src="docs/toast.png" width="360" alt="toast"><br><sub><b>On/off badge</b> — appears at the top when you show 👍.</sub></p>
+
 ## 🚀 Install
 
 1. **Download** [`GestureControl-macOS.zip`](https://github.com/RazinAleksandr/gesture-control/releases/latest/download/GestureControl-macOS.zip), unzip it and drag **Gesture Control** into *Applications*.

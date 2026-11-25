@@ -201,6 +201,7 @@ struct GestureGuideView: View {
 
 @MainActor final class GestureGuide {
     private var window: NSWindow?
+    var demoFrame: CGRect? { window?.frame }   // for README screenshots
 
     func show() {
         let w = window ?? makeWindow()

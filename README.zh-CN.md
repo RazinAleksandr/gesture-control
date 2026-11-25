@@ -67,6 +67,8 @@
   </tr>
 </table>
 
+<p align="center"><img src="docs/toast-zh.png" width="360" alt="toast"><br><sub><b>开关提示</b>：竖起 👍 时出现在屏幕顶部。</sub></p>
+
 ## 🚀 安装
 
 1. **下载** [`GestureControl-macOS.zip`](https://github.com/RazinAleksandr/gesture-control/releases/latest/download/GestureControl-macOS.zip)，解压后把 **Gesture Control** 拖进「应用程序」文件夹。

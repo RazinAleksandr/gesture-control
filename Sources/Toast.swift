@@ -35,6 +35,8 @@ private struct ToastView: View {
 
 @MainActor final class Toast {
     private var panel: NSPanel?
+    var demoFrame: CGRect? { panel?.frame }    // for README screenshots
+    func demoHide() { generation += 1; panel?.orderOut(nil) }
     private var generation = 0
 
     func show(enabled: Bool) {

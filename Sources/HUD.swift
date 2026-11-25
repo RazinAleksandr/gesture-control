@@ -10,6 +10,11 @@ import QuartzCore
     /// Help button pressed.
     var onHelp: (() -> Void)?
     var onQuit: (() -> Void)?                 // power button: quit the app
+    var demoFrame: CGRect? { panel?.frame }   // for README screenshots
+    func demoCenter(on screen: NSScreen) {       // for README screenshots
+        guard let p = panel else { return }
+        p.setFrameOrigin(CGPoint(x: screen.frame.midX - p.frame.width / 2, y: screen.frame.midY - p.frame.height / 2))
+    }
     /// Camera hidden/shown via the panel's eye button (not called for `setCollapsed`).
     var onCollapsedChanged: ((Bool) -> Void)?
     private(set) var isCollapsed = false

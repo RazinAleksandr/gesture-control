@@ -1,15 +1,12 @@
 // Renders README images from the app's own drawing code (no camera, no real windows).
-//   render-assets <docs dir> <frames dir> <icon 512 png>
-//   For each language (en, ru, zh): docs/banner[-ru|-zh].png, hud…, hud-collapsed…, guide….png,
-//   and frames in <frames dir>/<lang>/ for demo[-ru|-zh].gif (assembled by scripts/render-assets.sh)
+//   render-assets <docs dir> <shots dir> <icon 512 png>
+//   Banner per language (docs/banner[-ru|-zh].png) built around a real screenshot from scripts/shots.
 import AppKit
 import SwiftUI
 
-setenv("WINDOW_PICKER_FAKE", "6", 1)   // demo windows instead of the user's real ones
 let root = URL(fileURLWithPath: CommandLine.arguments[1])
 let frames = URL(fileURLWithPath: CommandLine.arguments[2])
 let iconPath = CommandLine.arguments[3]
-try? FileManager.default.createDirectory(at: frames, withIntermediateDirectories: true)
 
 func snapshot<V: View>(_ view: V, to url: URL) {
     let host = NSHostingView(rootView: view)
@@ -75,56 +72,18 @@ struct Banner: View {
 }
 
 MainActor.assumeIsolated {
+  // banner per language, using a real screenshot frame from scripts/shots
   for lang in Lang.allCases {
     L10n.shared.lang = lang
     let sfx = lang == .en ? "" : "-\(lang.rawValue)"
-    let langFrames = frames.appendingPathComponent(lang.rawValue)
-    try? FileManager.default.createDirectory(at: langFrames, withIntermediateDirectories: true)
-
-    // camera HUD, expanded and collapsed
-    let hud = HUD(session: nil)
-    let hand = SelfTest.hand(at: CGPoint(x: 0.5, y: 0.47), fingers: SelfTest.open, s: 0.2, t: 0)
-    let label = tr("point & hold", "наведите и задержите", "指向并停留")
-    hud.renderDebugPNG(to: root.appendingPathComponent("hud\(sfx).png"), hand: hand, mode: .picker, label: label)
-    hud.renderDebugPNG(to: root.appendingPathComponent("hud-collapsed\(sfx).png"), hand: hand, mode: .picker, label: label,
-                       collapsed: true)
-
-    // gesture guide
-    GestureGuide.renderPNG(to: root.appendingPathComponent("guide\(sfx).png"))
-
-    // demo animation of the window picker
-    let picker = WindowPicker()
-    var path: [(CGPoint, CGFloat)] = []
-    func move(_ a: CGPoint, _ b: CGPoint, _ n: Int) {
-        for i in 0..<n {
-            let t = CGFloat(i) / CGFloat(n - 1), e = t * t * (3 - 2 * t)
-            path.append((CGPoint(x: a.x + (b.x - a.x) * e, y: a.y + (b.y - a.y) * e), 0))
-        }
-    }
-    func hold(_ p: CGPoint, wait: Int, fill: Int, after: Int) {
-        for _ in 0..<wait { path.append((p, 0)) }
-        for i in 1...fill { path.append((p, CGFloat(i) / CGFloat(fill))) }
-        for _ in 0..<after { path.append((p, 1)) }
-    }
-    let start = CGPoint(x: 0.12, y: 0.80), safari = CGPoint(x: 0.24, y: 0.42), terminal = CGPoint(x: 0.587, y: 0.42)
-    let notes = CGPoint(x: 0.76, y: 0.43), calendar = CGPoint(x: 0.587, y: 0.61), mailClose = CGPoint(x: 0.473, y: 0.545)
-    move(start, safari, 14); move(safari, terminal, 14); move(terminal, notes, 8); move(notes, calendar, 12)
-    hold(calendar, wait: 6, fill: 18, after: 6)
-    move(calendar, mailClose, 14)
-    hold(mailClose, wait: 6, fill: 22, after: 8)
-    for (i, (p, d)) in path.enumerated() {
-        picker.renderDebugPNG(to: langFrames.appendingPathComponent(String(format: "f%03d.png", i)),
-                              pointer: p, size: CGSize(width: 1728, height: 1117), dwellProgress: d)
-    }
-
-    // banner: icon + title + a picker frame
-    let shot = NSImage(contentsOf: langFrames.appendingPathComponent(String(format: "f%03d.png", 58)))!
+    let shotURL = frames.appendingPathComponent("\(lang.rawValue)/frames/f058.jpg")
+    guard let shot = NSImage(contentsOf: shotURL) else { print("missing \(shotURL.path)"); continue }
     let renderer = ImageRenderer(content: Banner(icon: NSImage(contentsOfFile: iconPath)!, shot: shot))
     renderer.scale = 2
     if let cg = renderer.cgImage {
         try? NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:])?
             .write(to: root.appendingPathComponent("banner\(sfx).png"))
     }
-    print("\(lang.rawValue): frames \(path.count)")
+    print("banner \(lang.rawValue)")
   }
 }
