@@ -30,7 +30,7 @@ lipo -create dist/obj/GestureControl-arm64 dist/obj/GestureControl-x86_64 -outpu
 
 echo "• sign (ad-hoc) and zip"
 codesign --force --deep --sign - "$APP"
-ditto -c -k --keepParent "$APP" dist/GestureControl-macOS.zip
+ditto -c -k --norsrc --noextattr --noqtn --keepParent "$APP" dist/GestureControl-macOS.zip
 rm -rf dist/obj
 echo "done: $APP"
 ls -lh dist/GestureControl-macOS.zip
