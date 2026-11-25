@@ -18,6 +18,13 @@ struct GlassBackground: NSViewRepresentable {
         v.material = material
         v.blendingMode = .behindWindow
         v.state = .active
+        v.appearance = NSAppearance(named: .darkAqua)
+        // dark tint: keeps the glass dark over light windows too
+        let tint = NSView(frame: v.bounds)
+        tint.wantsLayer = true
+        tint.layer?.backgroundColor = NSColor(white: 0.05, alpha: Theme.glassTint).cgColor
+        tint.autoresizingMask = [.width, .height]
+        v.addSubview(tint)
         return v
     }
     func updateNSView(_ v: NSVisualEffectView, context: Context) {}

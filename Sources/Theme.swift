@@ -18,6 +18,7 @@ enum Theme {
     static let surfaceHover = NSColor(white: 1, alpha: 0.16)
 
     static let panelRadius: CGFloat = 20
+    static let glassTint: CGFloat = 0.74          // darkness of the tint over the blurred background
     static let cardRadius: CGFloat = 16
 
     /// SF Pro Rounded.
@@ -60,6 +61,12 @@ enum Theme {
         v.layer?.masksToBounds = true
         v.layer?.borderWidth = 1
         v.layer?.borderColor = hairline.cgColor
+        // dark tint: the glass would otherwise turn light grey over light windows
+        let tint = NSView(frame: v.bounds)
+        tint.wantsLayer = true
+        tint.layer?.backgroundColor = NSColor(white: 0.05, alpha: glassTint).cgColor
+        tint.autoresizingMask = [.width, .height]
+        v.addSubview(tint)
         return v
     }
 
