@@ -46,30 +46,46 @@ private struct GestureItem: Identifiable {
     let text: String
 }
 
-private let gestureSections: [(String, [GestureItem])] = [
-    ("Начало", [
-        GestureItem(glyph: "👍", title: "Включить и выключить",
-                    text: "Большой палец вверх, держите секунду. После запуска жесты выключены — ничего не сработает случайно."),
-        GestureItem(glyph: "📷", title: "Окно камеры",
-                    text: "Его можно перетаскивать. Кнопка с глазом прячет видео, «?» открывает эту справку."),
+private func gestureSections() -> [(String, [GestureItem])] { [
+    (tr("Getting started", "Начало", "开始"), [
+        GestureItem(glyph: "👍", title: tr("Turn on and off", "Включить и выключить", "开启与关闭"),
+                    text: tr("Thumb up, hold for a second. Gestures start switched off, so nothing fires by accident.",
+                             "Большой палец вверх, держите секунду. После запуска жесты выключены — ничего не сработает случайно.",
+                             "竖起大拇指并保持一秒。启动后手势默认关闭，不会误触。")),
+        GestureItem(glyph: "📷", title: tr("Camera panel", "Окно камеры", "摄像头面板"),
+                    text: tr("Drag it anywhere. The eye hides the video, “?” opens this guide, ⏻ quits.",
+                             "Его можно перетаскивать. Кнопка с глазом прячет видео, «?» открывает эту справку, ⏻ — выход.",
+                             "可以随意拖动。眼睛图标隐藏画面，“?” 打开本说明，⏻ 退出。")),
     ]),
-    ("Окна", [
-        GestureItem(glyph: "✊ → 🖐", title: "Показать все окна",
-                    text: "Быстро сожмите кулак и раскройте ладонь, растопырив все пальцы."),
-        GestureItem(glyph: "☝️", title: "Открыть окно",
-                    text: "Наведите палец на плитку и задержите — круг заполнится, окно откроется."),
-        GestureItem(glyph: "✕  −  ⤢", title: "Закрыть, свернуть, во весь экран",
-                    text: "Задержите палец на кнопке в углу плитки."),
-        GestureItem(glyph: "🖐 → ✊", title: "Закрыть выбор",
-                    text: "Ладонь, затем кулак — через полторы секунды после открытия. Или просто опустите руку."),
+    (tr("Windows", "Окна", "窗口"), [
+        GestureItem(glyph: "✊ → 🖐", title: tr("Show all windows", "Показать все окна", "显示所有窗口"),
+                    text: tr("Make a quick fist, then open your palm with all fingers spread.",
+                             "Быстро сожмите кулак и раскройте ладонь, растопырив все пальцы.",
+                             "快速握拳，然后张开手掌，五指分开。")),
+        GestureItem(glyph: "☝️", title: tr("Open a window", "Открыть окно", "打开窗口"),
+                    text: tr("Point at a card and hold still — the ring fills up and the window opens.",
+                             "Наведите палец на плитку и задержите — круг заполнится, окно откроется.",
+                             "指向一张卡片并保持不动，圆环填满后窗口就会打开。")),
+        GestureItem(glyph: "✕  −  ⤢", title: tr("Close, minimize, full screen", "Закрыть, свернуть, во весь экран", "关闭、最小化、全屏"),
+                    text: tr("Hold your finger on a button in the card's corner.",
+                             "Задержите палец на кнопке в углу плитки.",
+                             "手指停在卡片角落的按钮上。")),
+        GestureItem(glyph: "🖐 → ✊", title: tr("Close the picker", "Закрыть выбор", "关闭选择器"),
+                    text: tr("Palm, then fist — at least 1.5 s after opening. Or just lower your hand.",
+                             "Ладонь, затем кулак — через полторы секунды после открытия. Или просто опустите руку.",
+                             "手掌，然后握拳（打开 1.5 秒后）。或者直接把手放下。")),
     ]),
-    ("Прокрутка и столы", [
-        GestureItem(glyph: "✌️", title: "Прокрутка",
-                    text: "Два пальца вверх: страница движется за рукой, как на тачпаде. Взмах и сжатые пальцы — инерция."),
-        GestureItem(glyph: "🖐 ⇄", title: "Рабочие столы",
-                    text: "Спокойно покажите ладонь, затем быстрый взмах влево или вправо."),
+    (tr("Scrolling & desktops", "Прокрутка и столы", "滚动与桌面"), [
+        GestureItem(glyph: "✌️", title: tr("Scroll", "Прокрутка", "滚动"),
+                    text: tr("Two fingers up: the page follows your hand like a trackpad. Flick and fold your fingers for inertia.",
+                             "Два пальца вверх: страница движется за рукой, как на тачпаде. Взмах и сжатые пальцы — инерция.",
+                             "竖起两根手指：页面像触控板一样跟随你的手。快速一挥再收拢手指即可惯性滚动。")),
+        GestureItem(glyph: "🖐 ⇄", title: tr("Desktops", "Рабочие столы", "桌面"),
+                    text: tr("Show a calm palm, then swipe quickly left or right.",
+                             "Спокойно покажите ладонь, затем быстрый взмах влево или вправо.",
+                             "先平稳地展示手掌，再快速向左或向右挥动。")),
     ]),
-]
+] }
 
 private struct GestureCard: View {
     let item: GestureItem
@@ -111,22 +127,32 @@ private struct GestureCard: View {
 
 struct GestureGuideView: View {
     var onClose: () -> Void = {}
+    @ObservedObject private var l10n = L10n.shared
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(spacing: 16) {
                 AppMark(size: 58)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Жесты")
+                    Text(tr("Gestures", "Жесты", "手势"))
                         .font(.system(size: 30, weight: .bold, design: .rounded))
                         .foregroundStyle(.white)
-                    Text("Камера видит руку — всё обрабатывается на этом Mac и никуда не отправляется.")
+                    Text(tr("The camera sees your hand — everything is processed on this Mac and never leaves it.",
+                            "Камера видит руку — всё обрабатывается на этом Mac и никуда не отправляется.",
+                            "摄像头识别你的手——所有处理都在这台 Mac 上完成，数据不会离开设备。"))
                         .font(.system(size: 13, design: .rounded))
                         .foregroundStyle(.white.opacity(0.6))
                 }
+                Spacer(minLength: 12)
+                Picker("", selection: $l10n.lang) {
+                    ForEach(Lang.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .frame(width: 250)
             }
             .padding(.top, 8)
 
-            ForEach(gestureSections, id: \.0) { section in
+            ForEach(gestureSections(), id: \.0) { section in
                 VStack(alignment: .leading, spacing: 10) {
                     Text(section.0.uppercased())
                         .font(.system(size: 11, weight: .semibold, design: .rounded))
@@ -139,12 +165,14 @@ struct GestureGuideView: View {
             }
 
             HStack(alignment: .center) {
-                Label("Рука в 40–70 см от камеры, ладонью к экрану, при хорошем свете", systemImage: "lightbulb")
+                Label(tr("Hand 40–70 cm from the camera, palm towards the screen, good light",
+                         "Рука в 40–70 см от камеры, ладонью к экрану, при хорошем свете",
+                         "手离摄像头 40–70 厘米，掌心朝向屏幕，光线充足"), systemImage: "lightbulb")
                     .font(.system(size: 12, design: .rounded))
                     .foregroundStyle(.white.opacity(0.55))
                 Spacer()
                 Button(action: onClose) {
-                    Text("Понятно")
+                    Text(tr("Got it", "Понятно", "知道了"))
                         .font(.system(size: 14, weight: .semibold, design: .rounded))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 26).padding(.vertical, 10)
@@ -188,6 +216,7 @@ struct GestureGuideView: View {
         let host = NSHostingView(rootView: GestureGuideView(onClose: { [weak self] in
             MainActor.assumeIsolated { self?.close() }
         }))
+        host.sizingOptions = [.preferredContentSize]
         let size = host.fittingSize
         let w = NSWindow(contentRect: CGRect(origin: .zero, size: size),
                          styleMask: [.titled, .closable, .fullSizeContentView], backing: .buffered, defer: false)

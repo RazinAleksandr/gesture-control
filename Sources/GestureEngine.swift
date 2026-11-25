@@ -7,12 +7,12 @@ enum Pose: String {
 
     var ru: String {
         switch self {
-        case .none: return "нет руки"
-        case .fist: return "кулак"
-        case .open: return "ладонь"
-        case .two: return "два пальца"
-        case .point: return "указательный"
-        case .thumbUp: return "большой вверх"
+        case .none: return tr("no hand", "нет руки", "未检测到手")
+        case .fist: return tr("fist", "кулак", "握拳")
+        case .open: return tr("palm", "ладонь", "手掌")
+        case .two: return tr("two fingers", "два пальца", "两根手指")
+        case .point: return tr("pointing", "указательный", "食指")
+        case .thumbUp: return tr("thumb up", "большой вверх", "竖起大拇指")
         case .other: return "—"
         }
     }
@@ -286,7 +286,7 @@ final class GestureEngine {
                 enabled.toggle()
                 bloomBlocked = true
                 if enabled { enterCooldown(now) }
-                label = enabled ? "жесты включены" : "жесты выключены"
+                label = enabled ? tr("gestures on", "жесты включены", "手势已开启") : tr("gestures off", "жесты выключены", "手势已关闭")
                 return [.setEnabled(enabled)]
             }
             if toggleArmed { label = String(format: "👍 %.0f%%", min(held / cfg.toggleHold, 1) * 100); return [] }
@@ -294,7 +294,7 @@ final class GestureEngine {
             toggleArmed = true
         }
         guard enabled else {
-            label = "выключено · 👍 подержите 1 с — включить"
+            label = tr("off · hold 👍 for 1 s to turn on", "выключено · 👍 подержите 1 с — включить", "已关闭 · 竖起 👍 1 秒即可开启")
             momentum = .zero
             return []
         }
@@ -307,7 +307,7 @@ final class GestureEngine {
             if hypot(momentum.x, momentum.y) < 40 { momentum = .zero }
         }
         if mode == .cooldown {
-            if now >= cooldownUntil { mode = .idle } else { label = "пауза после действия"; return out }
+            if now >= cooldownUntil { mode = .idle } else { label = tr("short pause", "пауза после действия", "稍作停顿"); return out }
         }
         switch mode {
         case .idle: out += idleStep(m, now: now, changed: changed)
@@ -315,7 +315,7 @@ final class GestureEngine {
         case .picker: out += pickerStep(m, now: now)
         case .cooldown, .paused: break
         }
-        if label.isEmpty || mode == .idle { label = "поза: \(stablePose.ru)" }
+        if label.isEmpty || mode == .idle { label = tr("pose: ", "поза: ", "手势：") + stablePose.ru }
         return out
     }
 
@@ -327,7 +327,7 @@ final class GestureEngine {
         pointerFilter.reset()
         pointerHistory.removeAll()
         palmHistory.removeAll()
-        label = "выбор окна"
+        label = tr("window picker", "выбор окна", "窗口选择")
         return [.openPicker]
     }
 
@@ -417,7 +417,7 @@ final class GestureEngine {
         guard let dir else { return [] }
         palmHistory.removeAll()
         enterCooldown(now)
-        label = "взмах: \(dir.rawValue)"
+        label = tr("swipe ", "взмах ", "挥动 ") + (dir == .left ? "←" : dir == .right ? "→" : "↑")
         return [.swipe(dir)]
     }
 
@@ -443,7 +443,7 @@ final class GestureEngine {
         let sx = d.x * k * cfg.scrollHorizontalFactor, sy = d.y * k
         let fdt = max(CGFloat(now - prevTime), 1.0 / 60)
         scrollVel = CGPoint(x: scrollVel.x * 0.6 + sx / fdt * 0.4, y: scrollVel.y * 0.6 + sy / fdt * 0.4)
-        label = "прокрутка"
+        label = tr("scrolling", "прокрутка", "滚动中")
         if abs(sx) < 0.3 && abs(sy) < 0.3 { return [] }
         return [.scroll(dx: sx, dy: sy)]
     }
@@ -453,7 +453,7 @@ final class GestureEngine {
         guard let m else {
             if pointerVisible { pointerVisible = false; out.append(.pickerPointer(nil)) }
             if now - lastHandTime > cfg.pickerLostCancel { finishPicker(now: now); out.append(.closePicker) }
-            label = "рука не видна"
+            label = tr("hand not visible", "рука не видна", "看不到手")
             return out
         }
         if stablePose == .fist && stableSince > pickerOpenedAt + cfg.closeGrace && now - stableSince >= cfg.closeFistHold
@@ -477,7 +477,7 @@ final class GestureEngine {
             finishPicker(now: now)
             return [.closePicker]
         }
-        label = "задержите палец на окне или кнопке · ладонь → кулак — закрыть"
+        label = tr("hold on a window or button · palm → fist closes", "задержите палец на окне или кнопке · ладонь → кулак — закрыть", "手指停在窗口或按钮上 · 手掌 → 握拳关闭")
         return out
     }
 }

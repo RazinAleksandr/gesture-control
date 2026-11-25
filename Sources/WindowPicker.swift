@@ -540,14 +540,14 @@ private enum PickerTarget: Equatable {
 
     private static func fakeWindows(count: Int) -> [WindowInfo] {
         let entries: [(String, String, String)] = [
-            ("Safari", "/Applications/Safari.app", "Apple — Официальный сайт"),
-            ("Finder", "/System/Library/CoreServices/Finder.app", "Загрузки"),
+            ("Safari", "/Applications/Safari.app", tr("Apple — Official site", "Apple — Официальный сайт", "Apple — 官方网站")),
+            ("Finder", "/System/Library/CoreServices/Finder.app", tr("Downloads", "Загрузки", "下载")),
             ("Terminal", "/System/Applications/Utilities/Terminal.app", "zsh — 120×40"),
             ("Notes", "/System/Applications/Notes.app", ""),
-            ("Mail", "/System/Applications/Mail.app", "Входящие — 12 непрочитанных сообщений от коллег и рассылок, которые никто не читает"),
-            ("Calendar", "/System/Applications/Calendar.app", "Ноябрь 2026"),
-            ("Music", "/System/Applications/Music.app", "Недавно добавленные"),
-            ("System Settings", "/System/Applications/System Settings.app", "Конфиденциальность и безопасность"),
+            ("Mail", "/System/Applications/Mail.app", tr("Inbox — 12 unread messages from colleagues and newsletters nobody reads", "Входящие — 12 непрочитанных сообщений от коллег и рассылок, которые никто не читает", "收件箱 — 12 封来自同事和订阅的未读邮件")),
+            ("Calendar", "/System/Applications/Calendar.app", tr("November 2026", "Ноябрь 2026", "2026年11月")),
+            ("Music", "/System/Applications/Music.app", tr("Recently Added", "Недавно добавленные", "最近添加")),
+            ("System Settings", "/System/Applications/System Settings.app", tr("Privacy & Security", "Конфиденциальность и безопасность", "隐私与安全性")),
         ]
         return (0..<max(1, count)).map { i in
             let e = entries[i % entries.count]
@@ -597,7 +597,7 @@ private final class PickerPanel: NSPanel {
     private var size: CGSize = .zero
     private var progressValue: CGFloat = 0
 
-    private static let hintText = "Задержите палец на окне или кнопке · ладонь → кулак — закрыть"
+    private static var hintText: String { tr("Hold your finger on a window or button · palm → fist to close", "Задержите палец на окне или кнопке · ладонь → кулак — закрыть", "手指停在窗口或按钮上 · 手掌 → 握拳关闭") }
     private static let pointerBox: CGFloat = 48
     private static let ringDiameter: CGFloat = 34
     private static let ringWidth: CGFloat = 3
@@ -1159,7 +1159,7 @@ private final class PickerPanel: NSPanel {
             if w.isMinimized {
                 // small glass pill to the right of the icon
                 let attrs: [NSAttributedString.Key: Any] = [.font: Theme.font(max(8, 11 * s), .medium), .foregroundColor: Theme.textSecondary]
-                let str = "свёрнуто" as NSString
+                let str = tr("minimized", "свёрнуто", "已最小化") as NSString
                 let ts = str.size(withAttributes: attrs)
                 let pill = CGRect(x: pad + iconSide + 4 * s, y: pad + iconSide - 4 * s - ts.height - 8 * s,
                                   width: ts.width + 14 * s, height: ts.height + 6 * s)
@@ -1178,7 +1178,7 @@ private final class PickerPanel: NSPanel {
     private static func headerImage(count: Int, scale: CGFloat) -> CGImage? {
         let titleAttrs: [NSAttributedString.Key: Any] = [.font: Theme.font(22, .bold), .foregroundColor: Theme.textPrimary]
         let countAttrs: [NSAttributedString.Key: Any] = [.font: Theme.font(13, .semibold), .foregroundColor: Theme.textSecondary]
-        let title = "Окна" as NSString, num = "\(count)" as NSString
+        let title = tr("Windows", "Окна", "窗口") as NSString, num = "\(count)" as NSString
         let ts = title.size(withAttributes: titleAttrs), cs = num.size(withAttributes: countAttrs)
         let pillW = max(cs.width + 16, 26), pillH = cs.height + 6
         let size = CGSize(width: ceil(ts.width + 10 + pillW) + 2, height: ceil(ts.height) + 2)

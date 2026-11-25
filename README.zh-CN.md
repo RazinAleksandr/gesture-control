@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/banner.png" alt="Gesture Control — 用手势控制你的 Mac" width="100%">
+  <img src="docs/banner-zh.png" alt="Gesture Control — 用手势控制你的 Mac" width="100%">
 </p>
 
 <p align="center">
@@ -26,7 +26,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/demo.gif" width="820" alt="窗口选择器：用食指指向窗口并保持不动即可打开">
+  <img src="docs/demo-zh.gif" width="820" alt="窗口选择器：用食指指向窗口并保持不动即可打开">
 </p>
 
 ---
@@ -41,6 +41,7 @@
 | 👍 **默认安全** | 启动后手势处于关闭状态。竖起大拇指保持一秒即可开启或关闭，说话时的手势不会误触任何操作。 |
 | 🎥 **玻璃风格摄像头面板** | 一个可拖动的小面板，显示摄像头画面、手部骨架和当前模式，也可以收起成一个小胶囊。 |
 | 🔒 **注重隐私** | Apple Vision 在你的 Mac 本地运行，画面只在内存中处理，应用里完全没有网络代码。 |
+| 🌐 **English · Русский · 中文** | 默认跟随系统语言，可随时在手势说明或菜单中切换。 |
 
 ## 🖐️ 手势
 
@@ -61,8 +62,8 @@
 
 <table>
   <tr>
-    <td width="50%" align="center"><img src="docs/hud.png" alt="摄像头面板"><br><sub><b>摄像头面板</b>：可随意拖动。<b>?</b> 打开说明，眼睛图标隐藏画面，<b>⏻</b> 退出。</sub></td>
-    <td width="50%" align="center"><img src="docs/hud-collapsed.png" alt="收起状态"><br><sub><b>收起状态</b>：只显示模式和按钮。</sub><br><br><img src="docs/guide.jpg" alt="手势说明" width="100%"><br><sub><b>手势说明</b>：首次启动时自动打开。</sub></td>
+    <td width="50%" align="center"><img src="docs/hud-zh.png" alt="摄像头面板"><br><sub><b>摄像头面板</b>：可随意拖动。<b>?</b> 打开说明，眼睛图标隐藏画面，<b>⏻</b> 退出。</sub></td>
+    <td width="50%" align="center"><img src="docs/hud-collapsed-zh.png" alt="收起状态"><br><sub><b>收起状态</b>：只显示模式和按钮。</sub><br><br><img src="docs/guide-zh.jpg" alt="手势说明" width="100%"><br><sub><b>手势说明</b>：首次启动时自动打开，可在顶部切换语言。</sub></td>
   </tr>
 </table>
 
@@ -107,9 +108,9 @@ scripts/build-app.sh      # → dist/Gesture Control.app + dist/GestureControl-m
 确认手势已开启（竖起大拇指一秒，屏幕顶部会出现提示），摄像头面板里能看到手部骨架，并且手距离摄像头 40–70 厘米、掌心朝向屏幕。滚动和切换桌面还需要辅助功能权限。
 </details>
 
-<details><summary><b>界面为什么是俄语？</b></summary>
+<details><summary><b>如何切换语言？</b></summary>
 
-第一个版本是为一位俄语用户开发的。英文和中文界面已在计划中，欢迎贡献。
+界面默认跟随系统语言（英文、俄文或中文）。可以随时在手势说明窗口顶部（**?** 按钮）或菜单 ✋ → 「语言」中切换。
 </details>
 
 <details><summary><b>无法切换桌面。</b></summary>
@@ -122,7 +123,7 @@ scripts/build-app.sh      # → dist/Gesture Control.app + dist/GestureControl-m
 - [x] 停留选择窗口与窗口按钮
 - [x] 带惯性的滚动、切换桌面
 - [x] 👍 开关、玻璃风格摄像头面板、手势说明
-- [ ] 英文和中文界面
+- [x] 英文、俄文和中文界面
 - [ ] 实时窗口缩略图
 - [ ] 自定义手势与设置窗口
 - [ ] 指针模式，随处点击

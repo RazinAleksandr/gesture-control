@@ -1,6 +1,7 @@
 // Renders README images from the app's own drawing code (no camera, no real windows).
 //   render-assets <docs dir> <frames dir> <icon 512 png>
-//   → docs/banner.png, docs/hud.png, docs/hud-collapsed.png, docs/guide.png, frames for docs/demo.gif
+//   For each language (en, ru, zh): docs/banner[-ru|-zh].png, hud…, hud-collapsed…, guide….png,
+//   and frames in <frames dir>/<lang>/ for demo[-ru|-zh].gif (assembled by scripts/render-assets.sh)
 import AppKit
 import SwiftUI
 
@@ -46,12 +47,15 @@ struct Banner: View {
                     Text("Gesture Control")
                         .font(.system(size: 64, weight: .bold, design: .rounded))
                         .foregroundStyle(.white)
-                    Text("Control your Mac with your hand.\nJust the camera. Fully on-device.")
+                    Text(tr("Control your Mac with your hand.\nJust the camera. Fully on-device.",
+                            "Управляйте Mac рукой.\nТолько камера. Всё на устройстве.",
+                            "用手控制你的 Mac。\n只需摄像头，完全本地运行。"))
                         .font(.system(size: 24, weight: .regular, design: .rounded))
                         .foregroundStyle(.white.opacity(0.7))
                         .lineSpacing(4)
                     HStack(spacing: 10) {
-                        Chip(text: "macOS 14+"); Chip(text: "Apple Vision"); Chip(text: "On-device"); Chip(text: "Open source")
+                        Chip(text: "macOS 14+"); Chip(text: "Apple Vision")
+                        Chip(text: tr("On-device", "На устройстве", "本地运行")); Chip(text: tr("Open source", "Открытый код", "开源"))
                     }
                     .padding(.top, 6)
                 }
@@ -71,15 +75,22 @@ struct Banner: View {
 }
 
 MainActor.assumeIsolated {
+  for lang in Lang.allCases {
+    L10n.shared.lang = lang
+    let sfx = lang == .en ? "" : "-\(lang.rawValue)"
+    let langFrames = frames.appendingPathComponent(lang.rawValue)
+    try? FileManager.default.createDirectory(at: langFrames, withIntermediateDirectories: true)
+
     // camera HUD, expanded and collapsed
     let hud = HUD(session: nil)
     let hand = SelfTest.hand(at: CGPoint(x: 0.5, y: 0.47), fingers: SelfTest.open, s: 0.2, t: 0)
-    hud.renderDebugPNG(to: root.appendingPathComponent("hud.png"), hand: hand, mode: .picker, label: "Окна: 6")
-    hud.renderDebugPNG(to: root.appendingPathComponent("hud-collapsed.png"), hand: hand, mode: .picker, label: "Окна: 6",
+    let label = tr("point & hold", "наведите и задержите", "指向并停留")
+    hud.renderDebugPNG(to: root.appendingPathComponent("hud\(sfx).png"), hand: hand, mode: .picker, label: label)
+    hud.renderDebugPNG(to: root.appendingPathComponent("hud-collapsed\(sfx).png"), hand: hand, mode: .picker, label: label,
                        collapsed: true)
 
     // gesture guide
-    GestureGuide.renderPNG(to: root.appendingPathComponent("guide.png"))
+    GestureGuide.renderPNG(to: root.appendingPathComponent("guide\(sfx).png"))
 
     // demo animation of the window picker
     let picker = WindowPicker()
@@ -102,17 +113,18 @@ MainActor.assumeIsolated {
     move(calendar, mailClose, 14)
     hold(mailClose, wait: 6, fill: 22, after: 8)
     for (i, (p, d)) in path.enumerated() {
-        picker.renderDebugPNG(to: frames.appendingPathComponent(String(format: "f%03d.png", i)),
+        picker.renderDebugPNG(to: langFrames.appendingPathComponent(String(format: "f%03d.png", i)),
                               pointer: p, size: CGSize(width: 1728, height: 1117), dwellProgress: d)
     }
 
     // banner: icon + title + a picker frame
-    let shot = NSImage(contentsOf: frames.appendingPathComponent(String(format: "f%03d.png", 58)))!
+    let shot = NSImage(contentsOf: langFrames.appendingPathComponent(String(format: "f%03d.png", 58)))!
     let renderer = ImageRenderer(content: Banner(icon: NSImage(contentsOfFile: iconPath)!, shot: shot))
     renderer.scale = 2
     if let cg = renderer.cgImage {
         try? NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:])?
-            .write(to: root.appendingPathComponent("banner.png"))
+            .write(to: root.appendingPathComponent("banner\(sfx).png"))
     }
-    print("frames: \(path.count)")
+    print("\(lang.rawValue): frames \(path.count)")
+  }
 }

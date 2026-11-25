@@ -10,9 +10,12 @@ xcrun swiftc -O -swift-version 5 -o build/render-assets Sources/*.swift scripts/
   -framework ApplicationServices -framework SwiftUI
 rm -rf build/frames
 build/render-assets docs build/frames build/icon512.png
-ffmpeg -loglevel error -y -framerate 20 -i build/frames/f%03d.png \
-  -vf "scale=960:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=192[p];[b][p]paletteuse=dither=sierra2_4a" \
-  -loop 0 docs/demo.gif
-sips -Z 1400 -s format jpeg -s formatOptions 88 docs/guide.png --out docs/guide.jpg >/dev/null && rm docs/guide.png
-sips -Z 1600 docs/banner.png >/dev/null
+for L in en ru zh; do
+  SFX=""; [ "$L" != en ] && SFX="-$L"
+  ffmpeg -loglevel error -y -framerate 20 -i build/frames/$L/f%03d.png \
+    -vf "scale=960:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=192[p];[b][p]paletteuse=dither=sierra2_4a" \
+    -loop 0 docs/demo$SFX.gif
+  sips -Z 1400 -s format jpeg -s formatOptions 88 docs/guide$SFX.png --out docs/guide$SFX.jpg >/dev/null && rm docs/guide$SFX.png
+  sips -Z 1600 docs/banner$SFX.png >/dev/null
+done
 ls -lh docs

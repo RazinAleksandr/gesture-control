@@ -42,6 +42,7 @@
 | 👍 **Safe by default** | Starts switched off. A thumb-up held for a second turns gestures on or off, so talking with your hands never clicks anything. |
 | 🎥 **Glass camera HUD** | A small draggable panel shows what the camera sees, the hand skeleton and the current mode — or collapses into a pill. |
 | 🔒 **Private** | Apple Vision runs on your Mac. Frames never leave memory; there is no network code at all. |
+| 🌐 **English · Русский · 中文** | Follows your system language; switch any time in the gesture guide or the menu. |
 
 ## 🖐️ Gestures
 
@@ -63,7 +64,7 @@
 <table>
   <tr>
     <td width="50%" align="center"><img src="docs/hud.png" alt="Camera HUD"><br><sub><b>Camera HUD</b> — drag it anywhere. <b>?</b> opens the guide, the eye hides the video, <b>⏻</b> quits.</sub></td>
-    <td width="50%" align="center"><img src="docs/hud-collapsed.png" alt="Collapsed HUD"><br><sub><b>Collapsed</b> — just the mode and the buttons.</sub><br><br><img src="docs/guide.jpg" alt="Gesture guide" width="100%"><br><sub><b>Gesture guide</b> — opens on first launch.</sub></td>
+    <td width="50%" align="center"><img src="docs/hud-collapsed.png" alt="Collapsed HUD"><br><sub><b>Collapsed</b> — just the mode and the buttons.</sub><br><br><img src="docs/guide.jpg" alt="Gesture guide" width="100%"><br><sub><b>Gesture guide</b> — opens on first launch; switch the language at the top.</sub></td>
   </tr>
 </table>
 
@@ -169,9 +170,9 @@ Check that gestures are on (👍 for a second — a badge appears at the top), t
 Any Mac with macOS 14+ and a camera, Apple Silicon or Intel.
 </details>
 
-<details><summary><b>Why is the interface in Russian?</b></summary>
+<details><summary><b>How do I change the language?</b></summary>
 
-The first version was built for a Russian-speaking user. English and Chinese localization is on the roadmap — contributions welcome.
+The interface follows your system language (English, Russian or Chinese). Switch it any time with the selector at the top of the gesture guide (**?** button) or in the ✋ menu → *Language*.
 </details>
 
 <details><summary><b>Desktops don't switch.</b></summary>
@@ -184,7 +185,7 @@ Make sure *Keyboard → Keyboard Shortcuts → Mission Control → Move left / r
 - [x] Window picker with dwell selection and window buttons
 - [x] Trackpad-like scrolling with inertia, desktop switching
 - [x] Thumb-up on/off, glass HUD, gesture guide
-- [ ] English and Chinese interface
+- [x] English, Russian and Chinese interface
 - [ ] Live window thumbnails
 - [ ] Custom gesture → action mapping and a settings window
 - [ ] Pointer mode for clicking anywhere

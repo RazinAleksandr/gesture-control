@@ -50,14 +50,14 @@ final class Camera: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
 
     func configure(preferred: String?) throws {
         guard let dev = Camera.pickDevice(preferred: preferred) else {
-            throw NSError(domain: "gc", code: 1, userInfo: [NSLocalizedDescriptionKey: "Камера не найдена"])
+            throw NSError(domain: "gc", code: 1, userInfo: [NSLocalizedDescriptionKey: tr("Camera not found", "Камера не найдена", "未找到摄像头")])
         }
         deviceName = dev.localizedName
         session.beginConfiguration()
         if session.canSetSessionPreset(.hd1280x720) { session.sessionPreset = .hd1280x720 }
         let input = try AVCaptureDeviceInput(device: dev)
         guard session.canAddInput(input) else {
-            throw NSError(domain: "gc", code: 2, userInfo: [NSLocalizedDescriptionKey: "Не удалось подключить камеру"])
+            throw NSError(domain: "gc", code: 2, userInfo: [NSLocalizedDescriptionKey: tr("Could not connect the camera", "Не удалось подключить камеру", "无法连接摄像头")])
         }
         session.addInput(input)
         let out = AVCaptureVideoDataOutput()

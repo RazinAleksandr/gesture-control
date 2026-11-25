@@ -39,11 +39,11 @@ enum Theme {
 
     static func modeName(_ m: GestureMode) -> String {
         switch m {
-        case .idle: return "Готов"
-        case .scroll: return "Прокрутка"
-        case .picker: return "Выбор окна"
-        case .cooldown: return "Пауза"
-        case .paused: return "Выключено"
+        case .idle: return tr("Ready", "Готов", "就绪")
+        case .scroll: return tr("Scrolling", "Прокрутка", "滚动")
+        case .picker: return tr("Windows", "Выбор окна", "选择窗口")
+        case .cooldown: return tr("Pause", "Пауза", "暂停")
+        case .paused: return tr("Off", "Выключено", "已关闭")
         }
     }
 

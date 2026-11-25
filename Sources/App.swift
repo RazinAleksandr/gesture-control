@@ -58,8 +58,10 @@ func log(_ s: String) {
     private func cameraAuthorized(_ ok: Bool) {
         guard ok else {
             log("camera access denied")
-            alert("Нет доступа к камере",
-                  "Разрешите камеру: Системные настройки → Конфиденциальность и безопасность → Камера → Gesture Control.")
+            alert(tr("No camera access", "Нет доступа к камере", "没有摄像头权限"),
+                  tr("Allow the camera: System Settings → Privacy & Security → Camera → Gesture Control.",
+                     "Разрешите камеру: Системные настройки → Конфиденциальность и безопасность → Камера → Gesture Control.",
+                     "请允许使用摄像头：系统设置 → 隐私与安全性 → 摄像头 → Gesture Control。"))
             return
         }
         let pref = argValue("--camera") ?? ProcessInfo.processInfo.environment["GC_CAMERA"]
@@ -67,7 +69,7 @@ func log(_ s: String) {
             try camera.configure(preferred: pref)
         } catch {
             log("camera error: \(error.localizedDescription)")
-            alert("Камера не запустилась", error.localizedDescription)
+            alert(tr("The camera did not start", "Камера не запустилась", "摄像头未能启动"), error.localizedDescription)
             return
         }
         log("camera: \(camera.deviceName)")
@@ -101,7 +103,7 @@ func log(_ s: String) {
         }
         for a in actions { perform(a, now: now) }
         var label = engine.label
-        if !axTrusted { label = "нет доступа «Универсальный доступ» · " + label }
+        if !axTrusted { label = tr("no Accessibility access · ", "нет доступа «Универсальный доступ» · ", "未获得辅助功能权限 · ") + label }
         hud?.update(hand: h, mode: engine.mode, label: label)
         if now - lastStatusLog > 3 {
             lastStatusLog = now
@@ -149,22 +151,60 @@ func log(_ s: String) {
 
     // MARK: menu
 
+    private var helpItem: NSMenuItem!
+    private var axItem: NSMenuItem!
+    private var quitItem: NSMenuItem!
+    private var langItem: NSMenuItem!
+
     private func setupMenu() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem.button?.title = "✋"
         let menu = NSMenu()
-        enabledItem = NSMenuItem(title: "Жесты включены", action: #selector(toggleEnabled), keyEquivalent: "")
+        enabledItem = NSMenuItem(title: "", action: #selector(toggleEnabled), keyEquivalent: "")
         enabledItem.state = .on
-        hudItem = NSMenuItem(title: "Показывать камеру", action: #selector(toggleHUD), keyEquivalent: "")
+        hudItem = NSMenuItem(title: "", action: #selector(toggleHUD), keyEquivalent: "")
         hudItem.state = .on
+        helpItem = NSMenuItem(title: "", action: #selector(showHelp), keyEquivalent: "/")
+        axItem = NSMenuItem(title: "", action: #selector(openAXSettings), keyEquivalent: "")
+        langItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+        let langMenu = NSMenu()
+        for l in Lang.allCases {
+            let it = NSMenuItem(title: l.title, action: #selector(chooseLanguage(_:)), keyEquivalent: "")
+            it.representedObject = l.rawValue
+            it.target = self
+            langMenu.addItem(it)
+        }
+        langItem.submenu = langMenu
+        quitItem = NSMenuItem(title: "", action: #selector(quit), keyEquivalent: "q")
         menu.addItem(enabledItem)
         menu.addItem(hudItem)
-        menu.addItem(NSMenuItem(title: "Справка по жестам…", action: #selector(showHelp), keyEquivalent: "/"))
-        menu.addItem(NSMenuItem(title: "Открыть настройки «Универсальный доступ»", action: #selector(openAXSettings), keyEquivalent: ""))
+        menu.addItem(helpItem)
+        menu.addItem(langItem)
+        menu.addItem(axItem)
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Выйти", action: #selector(quit), keyEquivalent: "q"))
-        for item in menu.items { item.target = self }
+        menu.addItem(quitItem)
+        for item in menu.items where item.action != nil { item.target = self }
         statusItem.menu = menu
+        applyMenuTexts()
+        NotificationCenter.default.addObserver(forName: .gcLanguageChanged, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.applyMenuTexts() }
+        }
+    }
+
+    private func applyMenuTexts() {
+        enabledItem.title = tr("Gestures on", "Жесты включены", "启用手势")
+        hudItem.title = tr("Show camera", "Показывать камеру", "显示摄像头")
+        helpItem.title = tr("Gesture guide…", "Справка по жестам…", "手势说明…")
+        langItem.title = tr("Language", "Язык", "语言")
+        axItem.title = tr("Open Accessibility settings", "Открыть настройки «Универсальный доступ»", "打开辅助功能设置")
+        quitItem.title = tr("Quit", "Выйти", "退出")
+        for it in langItem.submenu?.items ?? [] {
+            it.state = (it.representedObject as? String) == L10n.shared.lang.rawValue ? .on : .off
+        }
+    }
+
+    @objc func chooseLanguage(_ sender: NSMenuItem) {
+        if let raw = sender.representedObject as? String, let l = Lang(rawValue: raw) { L10n.shared.lang = l }
     }
 
     @objc func toggleEnabled() {
@@ -216,6 +256,7 @@ func argValue(_ name: String) -> String? {
 @_cdecl("gc_main")
 public func gc_main() -> Int32 {
     let args = CommandLine.arguments
+    if let l = argValue("--lang").flatMap(Lang.init(rawValue:)) { L10n.shared.lang = l }
     if args.contains("--selftest") { return SelfTest.run() }
     return MainActor.assumeIsolated {
         if let path = argValue("--render-picker") {

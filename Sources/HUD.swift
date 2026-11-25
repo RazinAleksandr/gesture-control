@@ -835,9 +835,12 @@ private final class HUDStatusRow {
         return CGRect(x: x, y: baseline + font.ascender - h, width: max(0, width), height: h)
     }
 
+    private var shownName = ""
+
     func set(mode m: GestureMode, label l: String) {
-        if m != mode {
+        if m != mode || Theme.modeName(m) != shownName {
             mode = m
+            shownName = Theme.modeName(m)
             let color = Theme.modeColor(m)
             let solid = m == .picker ? Theme.accentB : color
             dot.backgroundColor = solid.cgColor

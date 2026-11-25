@@ -15,10 +15,10 @@ private struct ToastView: View {
             .frame(width: 34, height: 34)
             .shadow(color: enabled ? .gcB.opacity(0.6) : .clear, radius: 8)
             VStack(alignment: .leading, spacing: 1) {
-                Text(enabled ? "Жесты включены" : "Жесты выключены")
+                Text(enabled ? tr("Gestures on", "Жесты включены", "手势已开启") : tr("Gestures off", "Жесты выключены", "手势已关闭"))
                     .font(.system(size: 14, weight: .semibold, design: .rounded))
                     .foregroundStyle(.white)
-                Text(enabled ? "👍 — выключить" : "👍 — включить")
+                Text(enabled ? tr("👍 to turn off", "👍 — выключить", "👍 即可关闭") : tr("👍 to turn on", "👍 — включить", "👍 即可开启"))
                     .font(.system(size: 11.5, design: .rounded))
                     .foregroundStyle(.white.opacity(0.6))
             }
