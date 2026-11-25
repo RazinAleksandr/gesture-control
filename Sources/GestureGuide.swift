@@ -216,7 +216,6 @@ struct GestureGuideView: View {
         let host = NSHostingView(rootView: GestureGuideView(onClose: { [weak self] in
             MainActor.assumeIsolated { self?.close() }
         }))
-        host.sizingOptions = [.preferredContentSize]
         let size = host.fittingSize
         let w = NSWindow(contentRect: CGRect(origin: .zero, size: size),
                          styleMask: [.titled, .closable, .fullSizeContentView], backing: .buffered, defer: false)
@@ -229,6 +228,20 @@ struct GestureGuideView: View {
         w.isReleasedWhenClosed = false
         w.level = .floating
         w.contentView = host
+        // text length differs between languages: refit the height, keeping the top edge in place
+        NotificationCenter.default.addObserver(forName: .gcLanguageChanged, object: nil, queue: .main) { [weak w, weak host] _ in
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated {
+                    guard let w, let host else { return }
+                    host.layoutSubtreeIfNeeded()
+                    let fit = host.fittingSize
+                    guard fit.width > 0, fit.height > 0 else { return }
+                    var f = w.frameRect(forContentRect: CGRect(origin: .zero, size: fit))
+                    f.origin = CGPoint(x: w.frame.minX, y: w.frame.maxY - f.height)
+                    w.setFrame(f, display: true, animate: true)
+                }
+            }
+        }
         // no title-bar buttons: the guide closes with «Понятно» (Enter) or Esc
         for b in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] { w.standardWindowButton(b)?.isHidden = true }
         return w
