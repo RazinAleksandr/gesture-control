@@ -1,56 +1,84 @@
 import AppKit
+import SwiftUI
 
-/// Big short message in the middle of the screen (on/off feedback).
+/// Compact glass badge at the top of the screen (gestures on/off feedback), slides in and fades out.
+private struct ToastView: View {
+    let enabled: Bool
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle().fill(enabled ? AnyShapeStyle(Color.gcAccent) : AnyShapeStyle(Color.white.opacity(0.14)))
+                Image(systemName: enabled ? "hand.raised.fingers.spread.fill" : "hand.raised.slash.fill")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(.white)
+            }
+            .frame(width: 34, height: 34)
+            .shadow(color: enabled ? .gcB.opacity(0.6) : .clear, radius: 8)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(enabled ? "Жесты включены" : "Жесты выключены")
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white)
+                Text(enabled ? "👍 — выключить" : "👍 — включить")
+                    .font(.system(size: 11.5, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.6))
+            }
+        }
+        .padding(.leading, 8).padding(.trailing, 20).padding(.vertical, 8)
+        .background(
+            Capsule().fill(.clear)
+                .background(GlassBackground(material: .hudWindow).clipShape(Capsule()))
+                .overlay(Capsule().strokeBorder(.white.opacity(0.14), lineWidth: 1))
+        )
+        .environment(\.colorScheme, .dark)
+    }
+}
+
 @MainActor final class Toast {
     private var panel: NSPanel?
-    private var label: NSTextField?
     private var generation = 0
 
-    func show(_ text: String, color: NSColor) {
+    func show(enabled: Bool) {
+        let host = NSHostingView(rootView: ToastView(enabled: enabled))
+        let size = host.fittingSize
         let p = panel ?? makePanel()
-        label?.stringValue = text
-        label?.textColor = .white
-        p.contentView?.layer?.backgroundColor = color.withAlphaComponent(0.85).cgColor
-        if let screen = NSScreen.main {
-            let size = CGSize(width: 420, height: 110)
-            let f = screen.frame
-            p.setFrame(CGRect(x: f.midX - size.width / 2, y: f.midY - size.height / 2, width: size.width, height: size.height), display: true)
-        }
+        panel = p
+        p.contentView = host
+        guard let screen = NSScreen.main else { return }
+        let vf = screen.visibleFrame
+        let target = CGRect(x: vf.midX - size.width / 2, y: vf.maxY - size.height - 14, width: size.width, height: size.height)
         generation += 1
         let gen = generation
-        p.alphaValue = 1
+        p.setFrame(target.offsetBy(dx: 0, dy: 16), display: false)
+        p.alphaValue = 0
         p.orderFrontRegardless()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.1) { [weak self] in
+        NSAnimationContext.runAnimationGroup { ctx in
+            ctx.duration = 0.22
+            ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            p.animator().setFrame(target, display: true)
+            p.animator().alphaValue = 1
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) { [weak self] in
             MainActor.assumeIsolated {
                 guard let self, gen == self.generation, let p = self.panel else { return }
-                NSAnimationContext.runAnimationGroup({ $0.duration = 0.3; p.animator().alphaValue = 0 },
-                                                     completionHandler: { MainActor.assumeIsolated { if gen == self.generation { p.orderOut(nil) } } })
+                NSAnimationContext.runAnimationGroup({ ctx in
+                    ctx.duration = 0.3
+                    p.animator().alphaValue = 0
+                    p.animator().setFrame(target.offsetBy(dx: 0, dy: 10), display: true)
+                }, completionHandler: {
+                    MainActor.assumeIsolated { if gen == self.generation { p.orderOut(nil) } }
+                })
             }
         }
     }
 
     private func makePanel() -> NSPanel {
-        let p = NSPanel(contentRect: CGRect(x: 0, y: 0, width: 420, height: 110),
-                        styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
-        p.level = .screenSaver
+        let p = NSPanel(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        p.level = .statusBar
         p.isOpaque = false
         p.backgroundColor = .clear
-        p.ignoresMouseEvents = true
         p.hasShadow = true
+        p.ignoresMouseEvents = true
         p.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
-        let v = NSView(frame: p.contentRect(forFrameRect: p.frame))
-        v.wantsLayer = true
-        v.layer?.cornerRadius = 22
-        let l = NSTextField(labelWithString: "")
-        l.font = .systemFont(ofSize: 30, weight: .semibold)
-        l.alignment = .center
-        l.translatesAutoresizingMaskIntoConstraints = false
-        v.addSubview(l)
-        NSLayoutConstraint.activate([l.centerXAnchor.constraint(equalTo: v.centerXAnchor),
-                                     l.centerYAnchor.constraint(equalTo: v.centerYAnchor)])
-        p.contentView = v
-        panel = p
-        label = l
         return p
     }
 }

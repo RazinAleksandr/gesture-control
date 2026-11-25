@@ -14,5 +14,5 @@ fi
 xcrun swiftc -O -swift-version 5 -target arm64-apple-macos14.0 -emit-library -module-name GestureCore \
   -o build/libGestureCore.dylib Sources/*.swift \
   -framework AppKit -framework AVFoundation -framework Vision -framework CoreMedia \
-  -framework QuartzCore -framework ApplicationServices
+  -framework QuartzCore -framework ApplicationServices -framework SwiftUI
 echo "core built"

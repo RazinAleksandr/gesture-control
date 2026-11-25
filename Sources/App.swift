@@ -13,6 +13,7 @@ func log(_ s: String) {
     let engine = GestureEngine()
     let picker = WindowPicker()
     let toast = Toast()
+    let guide = GestureGuide()
     var hud: HUD?
     var statusItem: NSStatusItem!
     var enabledItem: NSMenuItem!
@@ -72,7 +73,17 @@ func log(_ s: String) {
         log("camera: \(camera.deviceName)")
         let hud = HUD(session: camera.session)
         self.hud = hud
+        hud.onHelp = { [weak self] in MainActor.assumeIsolated { self?.guide.show() } }
+        hud.onQuit = { MainActor.assumeIsolated { log("quit from camera panel"); NSApp.terminate(nil) } }
+        hud.onCollapsedChanged = { [weak self] collapsed in
+            MainActor.assumeIsolated { log("camera preview \(collapsed ? "hidden" : "shown")"); _ = self }
+        }
         hud.show()
+        // first launch: show the gesture guide once
+        if !UserDefaults.standard.bool(forKey: "gc.guideShown") || CommandLine.arguments.contains("--guide") {
+            UserDefaults.standard.set(true, forKey: "gc.guideShown")
+            guide.show()
+        }
         camera.onHand = { [weak self] h in
             DispatchQueue.main.async { MainActor.assumeIsolated { self?.handle(h) } }
         }
@@ -148,7 +159,7 @@ func log(_ s: String) {
         hudItem.state = .on
         menu.addItem(enabledItem)
         menu.addItem(hudItem)
-        menu.addItem(NSMenuItem(title: "Как управлять…", action: #selector(showHelp), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "Справка по жестам…", action: #selector(showHelp), keyEquivalent: "/"))
         menu.addItem(NSMenuItem(title: "Открыть настройки «Универсальный доступ»", action: #selector(openAXSettings), keyEquivalent: ""))
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Выйти", action: #selector(quit), keyEquivalent: "q"))
@@ -164,13 +175,8 @@ func log(_ s: String) {
     }
 
     func announceEnabled() {
-        if engine.enabled {
-            toast.show("✋ Жесты включены", color: .systemGreen)
-            NSSound(named: "Glass")?.play()
-        } else {
-            toast.show("⏸ Жесты выключены", color: .systemGray)
-            NSSound(named: "Bottle")?.play()
-        }
+        toast.show(enabled: engine.enabled)
+        NSSound(named: engine.enabled ? "Glass" : "Bottle")?.play()
     }
 
     func updateEnabledUI() {
@@ -183,20 +189,7 @@ func log(_ s: String) {
         if hud.isVisible { hud.hide(); hudItem.state = .off } else { hud.show(); hudItem.state = .on }
     }
 
-    @objc func showHelp() {
-        alert("Жесты", """
-        • 👍 Большой палец вверх, подержать 1 с: включить / выключить жесты.
-           После запуска жесты выключены.
-        • Быстрый кулак → раскрыть ладонь, растопырив все пальцы: показать все окна.
-           Водите указательным пальцем — подсвечивается ближайшее окно.
-           Задержите палец на окне — круг заполнится, окно откроется.
-           Кнопки на плитке (закрыть, свернуть, во весь экран) — тоже задержкой.
-           Ладонь → сжать в кулак (не раньше чем через 1,5 с после открытия), или опустить руку на 2 с — закрыть.
-        • Два пальца вверх (указательный + средний): прокрутка.
-           Страница движется за рукой, как на тачпаде. Быстрый взмах и сжать пальцы — прокрутка по инерции.
-        • Ладонь, быстрый взмах влево / вправо: соседний рабочий стол.
-        """)
-    }
+    @objc func showHelp() { guide.show() }
 
     @objc func openAXSettings() {
         NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
@@ -228,6 +221,11 @@ public func gc_main() -> Int32 {
         if let path = argValue("--render-picker") {
             WindowPicker().renderDebugPNG(to: URL(fileURLWithPath: path), pointer: CGPoint(x: 0.4, y: 0.45),
                                           size: CGSize(width: 1728, height: 1117))
+            print("rendered \(path)")
+            return 0
+        }
+        if let path = argValue("--render-guide") {
+            GestureGuide.renderPNG(to: URL(fileURLWithPath: path))
             print("rendered \(path)")
             return 0
         }

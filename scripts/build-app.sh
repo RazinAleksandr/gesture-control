@@ -21,7 +21,7 @@ plistlib.dump(p, open(sys.argv[1], "wb"))
 PY
 
 echo "• compile (arm64 + x86_64)"
-FRAMEWORKS="-framework AppKit -framework AVFoundation -framework Vision -framework CoreMedia -framework QuartzCore -framework ApplicationServices"
+FRAMEWORKS="-framework AppKit -framework AVFoundation -framework Vision -framework CoreMedia -framework QuartzCore -framework ApplicationServices -framework SwiftUI"
 for ARCH in arm64 x86_64; do
   xcrun swiftc -O -swift-version 5 -target $ARCH-apple-macos14.0 -module-name GestureControl \
     -o dist/obj/GestureControl-$ARCH Sources/*.swift Launcher/main.swift $FRAMEWORKS

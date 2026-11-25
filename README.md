@@ -1,150 +1,199 @@
-<div align="center">
+<p align="center">
+  <img src="docs/banner.png" alt="Gesture Control — control your Mac with your hand" width="100%">
+</p>
 
-<img src="docs/icon.png" width="128" alt="Gesture Control icon">
+<p align="center">
+  <b>English</b> · <a href="README.ru.md">Русский</a> · <a href="README.zh-CN.md">简体中文</a>
+</p>
 
-# Gesture Control
+<p align="center">
+  <a href="https://github.com/RazinAleksandr/gesture-control/releases/latest"><img src="https://img.shields.io/github/v/release/RazinAleksandr/gesture-control?style=flat-square&label=release&color=7B4BF2" alt="release"></a>
+  <img src="https://img.shields.io/badge/macOS-14%2B-111?style=flat-square&logo=apple&logoColor=white" alt="macOS 14+">
+  <img src="https://img.shields.io/badge/Apple%20Silicon%20%2B%20Intel-universal-111?style=flat-square" alt="universal">
+  <img src="https://img.shields.io/badge/Swift-6-F05138?style=flat-square&logo=swift&logoColor=white" alt="Swift">
+  <img src="https://img.shields.io/badge/privacy-100%25%20on--device-34C759?style=flat-square" alt="on-device">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-3B82F6?style=flat-square" alt="MIT"></a>
+</p>
 
-**Control your Mac with hand gestures — using only the built-in camera, fully on-device.**
+<p align="center">
+  <a href="https://github.com/RazinAleksandr/gesture-control/releases/latest/download/GestureControl-macOS.zip">
+    <img src="https://img.shields.io/badge/Download%20for%20macOS-GestureControl--macOS.zip-7B4BF2?style=for-the-badge&logo=apple&logoColor=white" alt="Download for macOS">
+  </a>
+</p>
 
-Switch windows, scroll and change desktops by waving your hand. No extra hardware, no cloud, no dependencies.
+<p align="center">
+  Switch windows, scroll and change desktops with hand gestures — using only the built-in camera.<br>
+  No extra hardware. No cloud. No dependencies. A 1.5&nbsp;MB menu-bar app.
+</p>
 
-[![macOS 14+](https://img.shields.io/badge/macOS-14%2B-000000?logo=apple&logoColor=white)](#install)
-[![Swift](https://img.shields.io/badge/Swift-6.1-F05138?logo=swift&logoColor=white)](#build-from-source)
-[![Apple Vision](https://img.shields.io/badge/Apple%20Vision-hand%20pose-0A84FF)](#how-it-works)
-[![On-device](https://img.shields.io/badge/privacy-100%25%20on--device-34C759)](#privacy)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
-[![Download](https://img.shields.io/github/v/release/RazinAleksandr/gesture-control?label=download&color=8E44AD)](https://github.com/RazinAleksandr/gesture-control/releases/latest)
-
-<img src="docs/demo.gif" width="760" alt="Window picker: the pointer follows your index finger, holding still selects a window or a window button">
-
-<sub>Window picker: point with your index finger, hold still to open a window — or close / minimize / full-screen it.</sub>
-
-[Русская версия](README.ru.md)
-
-</div>
+<p align="center">
+  <img src="docs/demo.gif" width="820" alt="Window picker: point with your index finger and hold still to open a window or press a window button">
+</p>
 
 ---
 
-## Features
+## ✨ Highlights
 
-- 🪟 **Window picker you drive with one finger.** A quick fist → spread palm shows every window as a tile. Point, hold still, and the window opens. Each tile has close / minimize / full-screen buttons you trigger the same way.
-- 📜 **Trackpad-like scrolling.** Raise two fingers and the page follows your hand; flick and fold your fingers for inertia.
-- 🖥️ **Desktop switching.** Show a calm palm, then swipe left or right.
-- 👍 **On/off with a thumb up.** Starts disabled, so nothing fires while you just talk with your hands.
-- 🎥 **Live camera HUD** with the detected hand skeleton and the current mode.
-- 🔒 **100% on-device.** Apple Vision runs locally; frames never leave memory. No network, no third-party code, ~1.3 MB app.
-
-## Gestures
-
-| Gesture | Action |
+|  |  |
 |---|---|
-| 👍 Thumb up, hold ~1 s | Turn gestures **on / off** (a big on-screen badge + sound confirms) |
-| ✊ → 🖐️ Quick fist, then palm with **all fingers spread** | **Open** the window picker |
-| ☝️ Point, then hold still ~1 s | **Open the window** under your finger (a ring fills up) |
-| ☝️ Hold on 🔴 🟡 🟢 on a tile | **Close** (1.5 s) / **minimize** / **full-screen** that window |
-| 🖐️ → ✊ Palm, then fist (≥1.5 s after opening) | **Close** the picker — or just lower your hand for 2 s |
-| ✌️ Two fingers up, move the hand | **Scroll** like a trackpad; flick + fold fingers for inertia |
-| 🖐️ Calm palm, then a fast swipe ← / → | **Previous / next desktop** (Ctrl+← / Ctrl+→) |
+| 🪟 **One-finger window picker** | Quick fist → spread palm shows every window as a glass card. Point, hold still, and it opens. Close, minimize or full-screen any window the same way. |
+| 📜 **Trackpad-like scrolling** | Raise two fingers and the page follows your hand. Flick and fold your fingers for inertia. |
+| 🖥️ **Desktop switching** | Show a calm palm, then swipe left or right. |
+| 👍 **Safe by default** | Starts switched off. A thumb-up held for a second turns gestures on or off, so talking with your hands never clicks anything. |
+| 🎥 **Glass camera HUD** | A small draggable panel shows what the camera sees, the hand skeleton and the current mode — or collapses into a pill. |
+| 🔒 **Private** | Apple Vision runs on your Mac. Frames never leave memory; there is no network code at all. |
 
-<p align="center"><img src="docs/hud.png" width="420" alt="Camera HUD with hand skeleton"><br>
-<sub>The floating camera HUD shows what the app sees and which mode it is in.</sub></p>
+## 🖐️ Gestures
 
-## Install
+| Gesture | Does |
+|:--|:--|
+| 👍 &nbsp;Thumb up, hold ~1 s | Turn gestures **on / off** |
+| ✊ → 🖐️ &nbsp;Quick fist, then a palm with **all fingers spread** | **Show all windows** |
+| ☝️ &nbsp;Point at a card and hold still | **Open that window** — a ring fills up first |
+| ☝️ &nbsp;Hold on **✕ · − · ⤢** in a card's corner | **Close** · **minimize** · **full-screen** the window |
+| 🖐️ → ✊ &nbsp;Palm, then fist (≥ 1.5 s after opening) | **Close the picker** — or just lower your hand |
+| ✌️ &nbsp;Two fingers up, move your hand | **Scroll** like a trackpad, flick for inertia |
+| 🖐️ ⇄ &nbsp;Calm palm, then a fast swipe | **Previous / next desktop** |
 
-1. Download **`GestureControl-macOS.zip`** from the [latest release](https://github.com/RazinAleksandr/gesture-control/releases/latest), unzip, and move **Gesture Control** to *Applications*.
-2. The app is not notarized (no paid Developer ID), so on first launch **right-click → Open**, or run:
-   ```bash
-   xattr -dr com.apple.quarantine "/Applications/Gesture Control.app"
-   ```
-3. Allow **Camera** when asked.
-4. Enable **Accessibility** (needed to scroll, switch desktops and raise / close windows):
-   *System Settings → Privacy & Security → Accessibility → Gesture Control*. No restart needed.
-5. A ✋ appears in the menu bar. Show 👍 for a second — and go.
+> [!TIP]
+> Keep your hand 40–70 cm from the camera, palm towards the screen, in decent light. The in-app guide (the **?** button) shows all of this any time.
 
-Requirements: macOS 14 Sonoma or newer, Apple Silicon or Intel (universal binary), a built-in or external camera.
+## 🎛️ Interface
 
-## Build from source
+<table>
+  <tr>
+    <td width="50%" align="center"><img src="docs/hud.png" alt="Camera HUD"><br><sub><b>Camera HUD</b> — drag it anywhere. <b>?</b> opens the guide, the eye hides the video, <b>⏻</b> quits.</sub></td>
+    <td width="50%" align="center"><img src="docs/hud-collapsed.png" alt="Collapsed HUD"><br><sub><b>Collapsed</b> — just the mode and the buttons.</sub><br><br><img src="docs/guide.jpg" alt="Gesture guide" width="100%"><br><sub><b>Gesture guide</b> — opens on first launch.</sub></td>
+  </tr>
+</table>
+
+## 🚀 Install
+
+1. **Download** [`GestureControl-macOS.zip`](https://github.com/RazinAleksandr/gesture-control/releases/latest/download/GestureControl-macOS.zip), unzip it and drag **Gesture Control** into *Applications*.
+2. **First launch.** The app isn't notarized (no paid Apple Developer ID), so macOS blocks it once:
+   click **Done** (not *Move to Trash*) → *System Settings → Privacy & Security* → scroll down → **Open Anyway** → **Open**.
+3. **Allow the camera** when asked.
+4. **Enable Accessibility** — *System Settings → Privacy & Security → Accessibility → Gesture Control*. It's needed to scroll, switch desktops and raise / close windows. No restart required.
+5. ✋ appears in the menu bar and the gesture guide opens. Show 👍 for a second — you're in.
+
+<details>
+<summary><b>Prefer Terminal for step 2?</b></summary>
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/Gesture Control.app"
+```
+On macOS 14, right-click → **Open** works as well.
+</details>
+
+**Requirements:** macOS 14 Sonoma or newer · Apple Silicon or Intel · built-in or external camera.
+
+## 🛠️ Build from source
 
 ```bash
 git clone https://github.com/RazinAleksandr/gesture-control.git
 cd gesture-control
-scripts/build-app.sh        # → dist/Gesture Control.app (universal) + dist/GestureControl-macOS.zip
+scripts/build-app.sh      # → dist/Gesture Control.app (universal) + dist/GestureControl-macOS.zip
 ```
 
-Only the Xcode Command Line Tools are needed (`xcode-select --install`); there is no Xcode project and no package dependencies.
+Only the Xcode Command Line Tools are needed (`xcode-select --install`) — no Xcode project, no packages.
 
 <details>
-<summary><b>Development loop</b> (fast rebuilds without re-granting permissions)</summary>
+<summary><b>Development loop</b></summary>
 
-macOS ties Camera / Accessibility permissions to the app's code signature, and ad-hoc builds change it on every rebuild. The dev setup avoids that: a tiny **launcher app is built once** and loads all logic from `libGestureCore.dylib`, which you can rebuild freely.
-
-```bash
-./build.sh                   # launcher (once) + build/libGestureCore.dylib
-./run.sh                     # start; log → build/run.log
-./run.sh --on --trace        # start enabled and write per-frame measurements → build/trace.log
-./run.sh --camera "MacBook"  # pick a camera by name
-GC_SCROLL_SIGN=-1 ./run.sh   # flip scroll direction
-```
-
-Offline checks (no camera, no permissions):
+macOS ties Camera and Accessibility permissions to the app's signature, and ad-hoc builds change it on every rebuild. In development a tiny **launcher app is built once** and loads all logic from `libGestureCore.dylib`, so you can rebuild without re-granting anything.
 
 ```bash
-build/GestureControl.app/Contents/MacOS/GestureControl --selftest      # 34 gesture scenarios on synthetic hands
-build/GestureControl.app/Contents/MacOS/GestureControl --list-windows
-scripts/render-assets.sh     # regenerate the images in docs/
+./build.sh                    # launcher (once) + build/libGestureCore.dylib
+./run.sh                      # start; log → build/run.log
+./run.sh --on --trace         # start enabled, write per-frame measurements → build/trace.log
+./run.sh --camera "MacBook"   # pick a camera by name
+./run.sh --guide              # show the gesture guide on start
+GC_SCROLL_SIGN=-1 ./run.sh    # flip the scroll direction
+
+build/GestureControl.app/Contents/MacOS/GestureControl --selftest   # 34 gesture scenarios, no camera
+scripts/render-assets.sh      # regenerate the images in docs/
 ```
 </details>
 
-## How it works
+## ⚙️ How it works
 
 ```mermaid
 flowchart LR
     CAM["📷 Camera<br/>1280×720 · 30 fps"] --> VIS["Apple Vision<br/>21 hand joints"]
     VIS --> ENG["Gesture engine<br/>poses · filters · state machine"]
-    VIS --> HUD["Camera HUD<br/>skeleton overlay"]
+    VIS --> HUD["Camera HUD"]
     ENG --> PICK["Window picker<br/>Accessibility API"]
     ENG --> SCR["Scroll events"]
-    ENG --> SPC["Ctrl+← / → desktops"]
+    ENG --> SPC["Ctrl ← / → desktops"]
 ```
 
-- **Pose classification is scale-invariant:** a finger is *extended* when its tip is clearly farther from the wrist than its middle joint, *folded* when closer. Fist, open palm, two fingers, pointing and thumb-up follow from the five finger states; "spread" is measured by the index–little and thumb–index distances.
-- **Stable input:** poses must hold for 4 frames; the pointer goes through a [One Euro filter](https://gery.casiez.net/1euro/); dwell counts only while the finger stays within a small radius.
-- **False-positive guards:** off by default (👍 to enable), spread-palm requirement, a grace period after opening, minimum hand size (ignores people in the background), hand-presence and motion checks for swipes.
-- **Performance:** ~10–20 ms of Vision work per frame on Apple Silicon at 30 fps.
-- The gesture engine is pure logic (frames in → actions out) and is covered by `--selftest`.
+- **Scale-invariant poses.** A finger is *extended* when its tip is clearly farther from the wrist than its middle joint, *folded* when closer. Fist, palm, two fingers, pointing and thumb-up follow from five finger states; "spread" uses the index–little and thumb–index distances.
+- **Steady input.** A pose must hold for 4 frames; the pointer runs through a [One Euro filter](https://gery.casiez.net/1euro/); a dwell counts only while the finger stays still.
+- **Guards against false positives.** Off by default, spread-palm requirement, a grace period after opening, a minimum hand size (people in the background are ignored), calm-palm checks before swipes.
+- **Fast.** ~10–20 ms of Vision work per frame on Apple Silicon at 30 fps.
+- **Testable.** The gesture engine is pure logic — frames in, actions out — and `--selftest` replays 34 scenarios on synthetic hands.
 
 <details>
-<summary><b>Project structure</b></summary>
+<summary><b>Project layout</b></summary>
 
 ```
 Sources/
   Camera.swift          capture + Vision hand pose
-  GestureEngine.swift   poses, filters, modes (idle / scroll / picker / cooldown / off)
-  WindowPicker.swift    full-screen overlay, window list & actions via Accessibility
-  HUD.swift             floating camera preview with the skeleton
-  Actions.swift         scroll / key events, focused-window helpers
+  GestureEngine.swift   poses, filters, modes (idle · scroll · picker · cooldown · off)
+  WindowPicker.swift    full-screen glass overlay; window list & actions via Accessibility
+  HUD.swift             draggable camera panel with the skeleton
+  GestureGuide.swift    the gesture guide window (SwiftUI)
   Toast.swift           on/off badge
+  Theme.swift           colors, fonts, glass
+  Actions.swift         scroll / key events, focused-window helpers
   App.swift             menu-bar app, wiring, CLI flags
   SelfTest.swift        synthetic-hand scenarios
-Launcher/               dev launcher (C) + standalone entry point + Info.plist
-scripts/                build-app.sh, make-icon.swift, render-assets.sh
+Launcher/               dev launcher + standalone entry point + Info.plist
+scripts/                build-app.sh · make-icon.swift · render-assets.sh
 ```
 </details>
 
-## Privacy
+## 🔒 Privacy
 
-Camera frames are processed in memory by Apple's on-device Vision framework and discarded; nothing is recorded, stored or sent anywhere — the app has no network code. Accessibility is used only to list, raise, minimize, full-screen and close windows and to post scroll / arrow-key events.
+Camera frames are processed in memory by Apple's on-device Vision framework and discarded. Nothing is recorded, stored or sent — the app has no network code. Accessibility is used only to list, raise, minimize, full-screen and close windows and to post scroll and arrow-key events.
 
-## Limitations & roadmap
+## ❓ FAQ
 
-- The interface text is currently in **Russian**; English localization is next.
-- The picker shows windows of the current desktop, with app icons and titles but no live thumbnails (those would require Screen Recording permission).
-- Thresholds were tuned on one person's hand and lighting; they live in `GestureConfig` and are easy to adjust.
-- Not notarized (see Install).
-- Ideas: window thumbnails, configurable gesture → action mapping, a settings window, pointer mode for clicking anywhere.
+<details><summary><b>It doesn't react to my hand.</b></summary>
 
-Issues and pull requests are welcome.
+Check that gestures are on (👍 for a second — a badge appears at the top), that the camera HUD shows your hand skeleton, and that your hand is 40–70 cm away with the palm facing the screen. Scrolling and desktops also need the Accessibility permission.
+</details>
 
-## License
+<details><summary><b>Which Macs are supported?</b></summary>
+
+Any Mac with macOS 14+ and a camera, Apple Silicon or Intel.
+</details>
+
+<details><summary><b>Why is the interface in Russian?</b></summary>
+
+The first version was built for a Russian-speaking user. English and Chinese localization is on the roadmap — contributions welcome.
+</details>
+
+<details><summary><b>Desktops don't switch.</b></summary>
+
+Make sure *Keyboard → Keyboard Shortcuts → Mission Control → Move left / right a space* (Ctrl ← / →) is enabled and you have more than one desktop.
+</details>
+
+## 🗺️ Roadmap
+
+- [x] Window picker with dwell selection and window buttons
+- [x] Trackpad-like scrolling with inertia, desktop switching
+- [x] Thumb-up on/off, glass HUD, gesture guide
+- [ ] English and Chinese interface
+- [ ] Live window thumbnails
+- [ ] Custom gesture → action mapping and a settings window
+- [ ] Pointer mode for clicking anywhere
+- [ ] Notarized build
+
+## 🤝 Contributing
+
+Issues and pull requests are welcome. Run `--selftest` before sending changes to the gesture engine, and `scripts/render-assets.sh` if you touch anything visual.
+
+## 📄 License
 
 [MIT](LICENSE) © 2026 Aleksandr Razin

@@ -14,7 +14,7 @@ struct WindowInfo {
     let isMinimized: Bool
 }
 
-/// Traffic-light buttons drawn in the top-left corner of every tile that has an AX handle.
+/// Round glass window buttons in the top-right corner of a tile that has an AX handle (shown on the highlighted tile).
 private enum PickerButtonKind: Int, CaseIterable {
     case close = 0, minimize, fullscreen
 }
@@ -566,68 +566,136 @@ private final class PickerPanel: NSPanel {
 
 // MARK: - Layer tree (shared by the live overlay and the offscreen debug render)
 
+/// Glass look (see Theme.swift): dark vignetted backdrop, glass cards with a gradient selection border,
+/// minimal round buttons in the card's top-right corner, gradient dwell rings.
 @MainActor private final class PickerCanvas {
     let root = CALayer()
+    private let vignette = CAGradientLayer()
+    private let header = CALayer()
     private let hint = CALayer()
+    // pointer: white dot + dwell ring (conic accent gradient masked by an arc)
     private let pointer = CALayer()
     private let dot = CALayer()
     private let track = CAShapeLayer()
-    private let progress = CAShapeLayer()
+    private let ring = CAGradientLayer()
+    private let ringArc = CAShapeLayer()
+    // dwell ring shown around the focused button instead of around the pointer
+    private let buttonRing = CALayer()
+    private let buttonTrack = CAShapeLayer()
+    private let buttonRingGradient = CAGradientLayer()
+    private let buttonRingArc = CAShapeLayer()
+
     private var tiles: [CALayer] = []
+    private var selections: [CALayer] = []         // per tile: glow + gradient border (opacity 0/1)
     private(set) var tileFrames: [CGRect] = []     // layer coords (origin bottom-left), unscaled
-    private var buttons: [[CALayer]] = []          // per tile: [close, minimize, fullscreen] or [] (no AX handle)
-    private var symbols: [[CALayer]] = []
+    private var buttons: [[CALayer]] = []          // per tile, by PickerButtonKind.rawValue; [] if no AX handle
+    private var buttonFills: [[CALayer]] = []
     private var buttonCenters: [[CGPoint]] = []    // layer coords, unscaled tile
-    private var buttonRadius: CGFloat = 17
+    private var buttonRadius: CGFloat = 15
     private(set) var highlightedTile: Int?
     private var focusedButton: PickerTarget?
     private var size: CGSize = .zero
-    private var accent: CGColor = NSColor.systemBlue.cgColor
+    private var progressValue: CGFloat = 0
 
     private static let hintText = "Задержите палец на окне или кнопке · ладонь → кулак — закрыть"
-    private static let pointerBox: CGFloat = 56
-    private static let ringRadius: CGFloat = 19
-    private static let highlightScale: CGFloat = 1.06
-    private static let focusScale: CGFloat = 1.28
-    private static let buttonColors: [CGColor] = [
-        CGColor(srgbRed: 1.000, green: 0.373, blue: 0.341, alpha: 1),   // close  #FF5F57
-        CGColor(srgbRed: 0.996, green: 0.737, blue: 0.180, alpha: 1),   // min    #FEBC2E
-        CGColor(srgbRed: 0.157, green: 0.784, blue: 0.251, alpha: 1),   // full   #28C840
-    ]
+    private static let pointerBox: CGFloat = 48
+    private static let ringDiameter: CGFloat = 34
+    private static let ringWidth: CGFloat = 3
+    private static let highlightScale: CGFloat = 1.05
+    private static let focusScale: CGFloat = 1.2
+    private static let ease = CAMediaTimingFunction(controlPoints: 0.2, 0.8, 0.2, 1)
+    /// Left-to-right slot of each button in the right-aligned group.
+    private static func slot(_ k: PickerButtonKind) -> Int {
+        switch k {
+        case .minimize: return 0
+        case .fullscreen: return 1
+        case .close: return 2
+        }
+    }
+    private static func symbolName(_ k: PickerButtonKind) -> String {
+        switch k {
+        case .close: return "xmark"
+        case .minimize: return "minus"
+        case .fullscreen: return "arrow.up.left.and.arrow.down.right"
+        }
+    }
+    /// Conic colors so that a clockwise sweep from 12 o'clock goes blue → violet → magenta.
+    private static var conicAccent: [CGColor] { Theme.accentGradient.reversed() }
 
     init() {
-        root.backgroundColor = CGColor(gray: 0, alpha: 0.55)
+        root.backgroundColor = CGColor(gray: 0, alpha: 0.58)
+        vignette.type = .radial
+        vignette.colors = [CGColor(gray: 0, alpha: 0), CGColor(gray: 0, alpha: 0), CGColor(gray: 0, alpha: 0.4)]
+        vignette.locations = [0, 0.5, 1]
+        vignette.startPoint = CGPoint(x: 0.5, y: 0.5)
+        vignette.endPoint = CGPoint(x: 1.05, y: 1.1)
+        root.addSublayer(vignette)
+        root.addSublayer(header)
         root.addSublayer(hint)
 
+        // Pointer
         let b = PickerCanvas.pointerBox
         pointer.bounds = CGRect(x: 0, y: 0, width: b, height: b)
         let c = CGPoint(x: b / 2, y: b / 2)
-        let full = CGMutablePath()
-        full.addArc(center: c, radius: PickerCanvas.ringRadius, startAngle: .pi / 2, endAngle: .pi / 2 - 2 * .pi, clockwise: true)
-        for (l, color) in [(track, CGColor(gray: 1, alpha: 0.28)), (progress, accent)] {
-            l.frame = pointer.bounds
-            l.path = full
-            l.fillColor = nil
-            l.strokeColor = color
-            l.lineWidth = 4
-            l.lineCap = .round
-            pointer.addSublayer(l)
-        }
-        progress.strokeEnd = 0
-        dot.bounds = CGRect(x: 0, y: 0, width: 22, height: 22)
+        PickerCanvas.setupRing(container: pointer, track: track, gradient: ring, arc: ringArc,
+                               radius: PickerCanvas.ringDiameter / 2, colors: PickerCanvas.conicAccent)
+        dot.bounds = CGRect(x: 0, y: 0, width: 18, height: 18)
         dot.position = c
-        dot.cornerRadius = 11
+        dot.cornerRadius = 9
         dot.backgroundColor = CGColor(gray: 1, alpha: 1)
-        dot.borderWidth = 2.5
-        dot.shadowColor = CGColor(gray: 0, alpha: 1)
-        dot.shadowOpacity = 0.45
-        dot.shadowRadius = 6
-        dot.shadowOffset = CGSize(width: 0, height: -1)
+        dot.borderWidth = 0.5
+        dot.borderColor = CGColor(gray: 0, alpha: 0.18)
+        dot.shadowColor = CGColor(gray: 1, alpha: 1)
+        dot.shadowOpacity = 0.7
+        dot.shadowRadius = 9
+        dot.shadowOffset = .zero
         dot.shadowPath = CGPath(ellipseIn: dot.bounds, transform: nil)
         pointer.addSublayer(dot)
         pointer.zPosition = 10
         pointer.isHidden = true
         root.addSublayer(pointer)
+
+        buttonRing.bounds = CGRect(x: 0, y: 0, width: 80, height: 80)
+        buttonRing.zPosition = 9
+        buttonRing.opacity = 0
+        PickerCanvas.setupRing(container: buttonRing, track: buttonTrack, gradient: buttonRingGradient, arc: buttonRingArc,
+                               radius: 24, colors: PickerCanvas.conicAccent)
+        root.addSublayer(buttonRing)
+    }
+
+    /// Track circle + conic gradient masked by a progress arc (starts at 12 o'clock, clockwise).
+    private static func setupRing(container: CALayer, track: CAShapeLayer, gradient: CAGradientLayer, arc: CAShapeLayer,
+                                  radius: CGFloat, colors: [CGColor]) {
+        let bounds = container.bounds
+        track.frame = bounds
+        track.fillColor = nil
+        track.strokeColor = CGColor(gray: 1, alpha: 0.16)
+        track.lineWidth = ringWidth
+        track.opacity = 0
+        container.addSublayer(track)
+        gradient.type = .conic
+        gradient.frame = bounds
+        gradient.colors = colors
+        gradient.startPoint = CGPoint(x: 0.5, y: 0.5)
+        gradient.endPoint = CGPoint(x: 0.5, y: 1)
+        gradient.opacity = 0
+        arc.frame = bounds
+        arc.fillColor = nil
+        arc.strokeColor = CGColor(gray: 0, alpha: 1)
+        arc.lineWidth = ringWidth
+        arc.lineCap = .round
+        arc.strokeEnd = 0
+        gradient.mask = arc
+        container.addSublayer(gradient)
+        setRingRadius(radius, track: track, arc: arc, in: bounds)
+    }
+
+    private static func setRingRadius(_ r: CGFloat, track: CAShapeLayer, arc: CAShapeLayer, in bounds: CGRect) {
+        let c = CGPoint(x: bounds.midX, y: bounds.midY)
+        let p = CGMutablePath()
+        p.addArc(center: c, radius: r, startAngle: .pi / 2, endAngle: .pi / 2 - 2 * .pi, clockwise: true)
+        track.path = p
+        arc.path = p
     }
 
     func toLayer(_ n: CGPoint) -> CGPoint {
@@ -698,40 +766,50 @@ private final class PickerPanel: NSPanel {
 
     func build(windows: [WindowInfo], buttons hasButtons: [Bool], size: CGSize, scale: CGFloat) {
         self.size = size
-        accent = (NSColor.controlAccentColor.usingColorSpace(.sRGB) ?? NSColor.systemBlue).cgColor
-        progress.strokeColor = accent
-        dot.borderColor = accent
-        for l in [root, hint, pointer, dot, track, progress] { l.contentsScale = scale }
+        vignette.frame = CGRect(origin: .zero, size: size)
+        for l in [root, vignette, header, hint, pointer, dot, track, ring, ringArc,
+                  buttonRing, buttonTrack, buttonRingGradient, buttonRingArc] { l.contentsScale = scale }
 
         tiles.forEach { $0.removeFromSuperlayer() }
         tiles = []
+        selections = []
         tileFrames = []
         buttons = []
-        symbols = []
+        buttonFills = []
         buttonCenters = []
         highlightedTile = nil
         focusedButton = nil
+        progressValue = 0
+        buttonRing.opacity = 0
 
         let n = windows.count
+        var gridTop = size.height / 2
         if n > 0 {
             let cols = max(1, min(6, n, Int(ceil(sqrt(Double(n) * 1.6)))))
             let rows = (n + cols - 1) / cols
-            let baseW: CGFloat = 260, baseH: CGFloat = 200, baseGap: CGFloat = 28
-            let topMargin: CGFloat = 70, bottomReserve: CGFloat = 130
+            let baseW: CGFloat = 248, baseH: CGFloat = 176, baseGap: CGFloat = 24
+            let topMargin: CGFloat = 120, bottomReserve: CGFloat = 110
             let availW = size.width * 0.92, availH = max(100, size.height - topMargin - bottomReserve)
             let gridW1 = CGFloat(cols) * baseW + CGFloat(cols - 1) * baseGap
             let gridH1 = CGFloat(rows) * baseH + CGFloat(rows - 1) * baseGap
-            let s = max(0.3, min(1, availW / gridW1, availH / gridH1))
+            let s = max(0.3, min(1.1, availW / gridW1, availH / gridH1))
             let tw = (baseW * s).rounded(), th = (baseH * s).rounded(), gap = (baseGap * s).rounded()
             let gridH = CGFloat(rows) * th + CGFloat(rows - 1) * gap
             let centerY = bottomReserve + availH / 2
-            let gridTop = (centerY + gridH / 2).rounded()
+            gridTop = (centerY + gridH / 2).rounded()
+            let radius = max(10, (18 * s).rounded())
 
-            // Traffic-light buttons: ≈34 pt at full size, min 24 pt, but always fit three in a row.
-            let inset = max(6, (10 * s).rounded()), spacing = max(5, (10 * s).rounded())
-            let d = min(max(24, (34 * s).rounded()), ((tw - 2 * inset - 2 * spacing) / 3).rounded(.down))
+            // Window buttons: ≈30 pt round glass buttons (min 24 pt), right-aligned group in the top-right corner.
+            let inset = max(6, (12 * s).rounded()), spacing = max(4, (8 * s).rounded())
+            let d = min(max(24, (30 * s).rounded()), ((tw - 2 * inset - 2 * spacing) / 3).rounded(.down))
             buttonRadius = d / 2
-            let symbolImages = PickerButtonKind.allCases.map { PickerCanvas.symbolImage($0, d: d, scale: scale) }
+            let groupW = 3 * d + 2 * spacing
+            let glyphSize = max(10, (12 * s).rounded())
+            let symbolImages = PickerButtonKind.allCases.map {
+                PickerCanvas.symbolImage(PickerCanvas.symbolName($0), side: d, pointSize: glyphSize, scale: scale)
+            }
+            PickerCanvas.setRingRadius(d * PickerCanvas.focusScale / 2 + 5, track: buttonTrack, arc: buttonRingArc,
+                                       in: buttonRing.bounds)
 
             for (i, w) in windows.enumerated() {
                 let r = i / cols, col = i % cols
@@ -740,85 +818,156 @@ private final class PickerPanel: NSPanel {
                 let x = (size.width / 2 - rowW / 2).rounded() + CGFloat(col) * (tw + gap)
                 let y = gridTop - CGFloat(r) * (th + gap) - th
                 let frame = CGRect(x: x, y: y, width: tw, height: th)
-                let withButtons = i < hasButtons.count && hasButtons[i]
+                let bounds = CGRect(origin: .zero, size: frame.size)
+                let cardPath = CGPath(roundedRect: bounds, cornerWidth: radius, cornerHeight: radius, transform: nil)
 
+                // Glass card
                 let t = CALayer()
                 t.frame = frame
                 t.contentsScale = scale
-                t.cornerRadius = max(8, 14 * s)
-                t.backgroundColor = CGColor(gray: 1, alpha: 0.10)
+                t.cornerRadius = radius
+                t.cornerCurve = .continuous
+                t.backgroundColor = Theme.surface.cgColor
                 t.borderWidth = 1
-                t.borderColor = CGColor(gray: 1, alpha: 0.10)
+                t.borderColor = Theme.hairline.cgColor
                 t.shadowColor = CGColor(gray: 0, alpha: 1)
-                t.shadowOpacity = 0
-                t.shadowRadius = 14
-                t.shadowOffset = CGSize(width: 0, height: -4)
-                t.shadowPath = CGPath(roundedRect: t.bounds, cornerWidth: t.cornerRadius, cornerHeight: t.cornerRadius, transform: nil)
+                t.shadowOpacity = 0.28
+                t.shadowRadius = 16
+                t.shadowOffset = CGSize(width: 0, height: -6)
+                t.shadowPath = cardPath
+
+                // Soft top sheen
+                let sheen = CAGradientLayer()
+                sheen.frame = bounds
+                sheen.cornerRadius = radius
+                sheen.cornerCurve = .continuous
+                sheen.masksToBounds = true
+                sheen.colors = [CGColor(gray: 1, alpha: 0.07), CGColor(gray: 1, alpha: 0)]
+                sheen.locations = [0, 0.6]
+                sheen.startPoint = CGPoint(x: 0.5, y: 1)
+                sheen.endPoint = CGPoint(x: 0.5, y: 0)
+                t.addSublayer(sheen)
+
+                // Selection: soft accent glow + 2 pt accent-gradient border (gradient masked by a bordered layer)
+                let sel = CALayer()
+                sel.frame = bounds
+                sel.opacity = 0
+                let glow = CAShapeLayer()           // stroke under the gradient border; its shadow is the glow
+                glow.frame = bounds
+                glow.contentsScale = scale
+                glow.path = cardPath
+                glow.fillColor = nil
+                glow.strokeColor = Theme.accentB.cgColor
+                glow.lineWidth = 2
+                glow.shadowPath = cardPath.copy(strokingWithWidth: 3, lineCap: .round, lineJoin: .round, miterLimit: 1)
+                glow.shadowColor = Theme.accentB.cgColor
+                glow.shadowOpacity = 0.95
+                glow.shadowRadius = 18
+                glow.shadowOffset = .zero
+                sel.addSublayer(glow)
+                let border = CAGradientLayer()
+                border.frame = bounds
+                border.colors = Theme.accentGradient
+                border.startPoint = CGPoint(x: 0, y: 1)
+                border.endPoint = CGPoint(x: 1, y: 0)
+                let borderMask = CALayer()
+                borderMask.frame = bounds
+                borderMask.cornerRadius = radius
+                borderMask.cornerCurve = .continuous
+                borderMask.borderWidth = 2
+                borderMask.borderColor = CGColor(gray: 0, alpha: 1)
+                border.mask = borderMask
+                sel.addSublayer(border)
+                t.addSublayer(sel)
+
                 let content = CALayer()
-                content.frame = t.bounds
+                content.frame = bounds
                 content.contentsScale = scale
-                content.contents = PickerCanvas.tileImage(w, size: frame.size, s: s, scale: scale,
-                                                          top: withButtons ? inset + d + 4 * s : 0)
+                content.contents = PickerCanvas.tileImage(w, size: frame.size, s: s, scale: scale)
                 t.addSublayer(content)
 
-                var bl: [CALayer] = [], sl: [CALayer] = [], centers: [CGPoint] = []
-                if withButtons {
+                var bl: [CALayer] = [], fl: [CALayer] = [], centers: [CGPoint] = []
+                if i < hasButtons.count && hasButtons[i] {
                     for kind in PickerButtonKind.allCases {
-                        let k = kind.rawValue
-                        let local = CGPoint(x: inset + d / 2 + CGFloat(k) * (d + spacing), y: th - inset - d / 2)
+                        let local = CGPoint(x: tw - inset - groupW + d / 2 + CGFloat(PickerCanvas.slot(kind)) * (d + spacing),
+                                            y: th - inset - d / 2)
+                        let glowColor = kind == .close ? Theme.danger.cgColor : Theme.accentB.cgColor
                         let b = CALayer()
                         b.bounds = CGRect(x: 0, y: 0, width: d, height: d)
                         b.position = local
                         b.contentsScale = scale
                         b.cornerRadius = d / 2
-                        b.backgroundColor = PickerCanvas.buttonColors[k]
-                        b.borderWidth = 0.5
-                        b.borderColor = CGColor(gray: 0, alpha: 0.25)
-                        b.opacity = 0.85
-                        b.shadowColor = PickerCanvas.buttonColors[k]
+                        b.backgroundColor = CGColor(gray: 1, alpha: 0.12)
+                        b.borderWidth = 1
+                        b.borderColor = Theme.hairline.cgColor
+                        b.opacity = 0
+                        b.shadowColor = glowColor
                         b.shadowOpacity = 0
                         b.shadowRadius = 12
                         b.shadowOffset = .zero
-                        b.shadowPath = CGPath(ellipseIn: b.bounds.insetBy(dx: -3, dy: -3), transform: nil)
+                        b.shadowPath = CGPath(ellipseIn: b.bounds, transform: nil)
+                        let fill: CALayer
+                        if kind == .close {
+                            fill = CALayer()
+                            fill.backgroundColor = Theme.danger.cgColor
+                        } else {
+                            let g = CAGradientLayer()
+                            g.colors = Theme.accentGradient
+                            g.startPoint = CGPoint(x: 0, y: 1)
+                            g.endPoint = CGPoint(x: 1, y: 0)
+                            fill = g
+                        }
+                        fill.frame = b.bounds
+                        fill.cornerRadius = d / 2
+                        fill.masksToBounds = true
+                        fill.opacity = 0
+                        b.addSublayer(fill)
                         let sym = CALayer()
                         sym.frame = b.bounds
                         sym.contentsScale = scale
-                        sym.contents = symbolImages[k]
-                        sym.opacity = 0
+                        sym.contents = symbolImages[kind.rawValue]
                         b.addSublayer(sym)
                         t.addSublayer(b)
                         bl.append(b)
-                        sl.append(sym)
+                        fl.append(fill)
                         centers.append(CGPoint(x: frame.minX + local.x, y: frame.minY + local.y))
                     }
                 }
-                root.insertSublayer(t, below: hint)
+                root.insertSublayer(t, below: header)
                 tiles.append(t)
+                selections.append(sel)
                 tileFrames.append(frame)
                 buttons.append(bl)
-                symbols.append(sl)
+                buttonFills.append(fl)
                 buttonCenters.append(centers)
             }
         }
 
+        if let img = PickerCanvas.headerImage(count: n, scale: scale) {
+            let hs = CGSize(width: CGFloat(img.width) / scale, height: CGFloat(img.height) / scale)
+            header.contents = img
+            header.frame = CGRect(x: ((size.width - hs.width) / 2).rounded(), y: (gridTop + 30).rounded(),
+                                  width: hs.width, height: hs.height)
+            header.isHidden = header.frame.maxY > size.height - 8
+        }
         if let img = PickerCanvas.hintImage(scale: scale) {
             let hs = CGSize(width: CGFloat(img.width) / scale, height: CGFloat(img.height) / scale)
             hint.contents = img
-            hint.frame = CGRect(x: ((size.width - hs.width) / 2).rounded(), y: 44, width: hs.width, height: hs.height)
+            hint.frame = CGRect(x: ((size.width - hs.width) / 2).rounded(), y: 36, width: hs.width, height: hs.height)
         }
     }
 
     // MARK: State
 
-    /// Highlights the target's tile (scale, accent border, button symbols) and glows/enlarges a targeted button.
+    /// Lifts the target's tile (scale, gradient border, glow, buttons fade in) and fills/glows a targeted button.
     func setTarget(_ t: PickerTarget?, animated: Bool) {
         let newTile = t?.tile
         var newFocus: PickerTarget?
         if case .button? = t { newFocus = t }
         CATransaction.begin()
         CATransaction.setDisableActions(!animated)
-        CATransaction.setAnimationDuration(0.14)
-        CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeOut))
+        CATransaction.setAnimationDuration(0.18)
+        CATransaction.setAnimationTimingFunction(PickerCanvas.ease)
         if newFocus != focusedButton, case .button(let i, let k)? = focusedButton {
             styleButton(i, k.rawValue, focused: false)
         }
@@ -832,6 +981,18 @@ private final class PickerPanel: NSPanel {
         }
         focusedButton = newFocus
         CATransaction.commit()
+
+        // Park the button dwell ring on the focused button (final, lifted position).
+        if case .button(let i, let k)? = newFocus, let c = buttonCenter(i, k.rawValue) {
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            buttonRing.position = CGPoint(x: c.x.rounded(), y: c.y.rounded())
+            buttonRingGradient.colors = k == .close
+                ? [Theme.danger.cgColor, NSColor(srgbRed: 1, green: 0.55, blue: 0.5, alpha: 1).cgColor, Theme.danger.cgColor]
+                : PickerCanvas.conicAccent
+            CATransaction.commit()
+        }
+        applyProgress()
     }
 
     private func styleTile(_ k: Int, on: Bool) {
@@ -839,13 +1000,14 @@ private final class PickerPanel: NSPanel {
         let t = tiles[k]
         let m = PickerCanvas.highlightScale
         t.transform = on ? CATransform3DMakeScale(m, m, 1) : CATransform3DIdentity
-        t.backgroundColor = CGColor(gray: 1, alpha: on ? 0.22 : 0.10)
-        t.borderWidth = on ? 3 : 1
-        t.borderColor = on ? accent : CGColor(gray: 1, alpha: 0.10)
-        t.shadowOpacity = on ? 0.5 : 0
+        t.backgroundColor = on ? CGColor(gray: 1, alpha: 0.14) : Theme.surface.cgColor
+        t.borderColor = on ? CGColor(gray: 1, alpha: 0) : Theme.hairline.cgColor
+        t.shadowOpacity = on ? 0.55 : 0.28
+        t.shadowRadius = on ? 30 : 16
+        t.shadowOffset = CGSize(width: 0, height: on ? -16 : -6)
         t.zPosition = on ? 1 : 0
-        for s in symbols[k] { s.opacity = on ? 1 : 0 }
-        for b in buttons[k] { b.opacity = on ? 1 : 0.85 }
+        selections[k].opacity = on ? 1 : 0
+        for b in buttons[k] { b.opacity = on ? 1 : 0 }
     }
 
     private func styleButton(_ i: Int, _ k: Int, focused: Bool) {
@@ -853,10 +1015,10 @@ private final class PickerPanel: NSPanel {
         let b = buttons[i][k]
         let m = PickerCanvas.focusScale
         b.transform = focused ? CATransform3DMakeScale(m, m, 1) : CATransform3DIdentity
-        b.shadowOpacity = focused ? 1 : 0
-        b.borderWidth = focused ? 2.5 : 0.5
-        b.borderColor = focused ? CGColor(gray: 1, alpha: 0.95) : CGColor(gray: 0, alpha: 0.25)
+        b.shadowOpacity = focused ? 0.9 : 0
+        b.borderColor = focused ? CGColor(gray: 1, alpha: 0.35) : Theme.hairline.cgColor
         b.zPosition = focused ? 2 : 0
+        buttonFills[i][k].opacity = focused ? 1 : 0
     }
 
     /// Immediate feedback after close/minimize while the window list is being refreshed.
@@ -880,16 +1042,30 @@ private final class PickerPanel: NSPanel {
         CATransaction.commit()
     }
 
-    /// Dwell progress ring 0...1 (hidden at 0); the dot shrinks a little as it fills.
+    /// Dwell progress 0...1: ring around the focused button if a button is targeted, else around the pointer.
     func setPinch(_ v: CGFloat) {
+        progressValue = v
+        applyProgress()
+    }
+
+    private func applyProgress() {
+        let v = progressValue
+        let onButton = focusedButton != nil
+        let show = v > 0.01
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        progress.strokeEnd = v
-        let visible: Float = v > 0.01 ? 1 : 0
-        track.opacity = visible
-        progress.opacity = visible
-        let k = 1 - 0.25 * v
+        ringArc.strokeEnd = v
+        buttonRingArc.strokeEnd = v
+        let pointerRing: Float = show && !onButton ? 1 : 0
+        track.opacity = pointerRing
+        ring.opacity = pointerRing
+        buttonTrack.opacity = 1
+        buttonRingGradient.opacity = 1
+        buttonRing.opacity = show && onButton ? 1 : 0
+        // On a button the dot shrinks so the button glyph stays readable; on a tile it tightens as the ring fills.
+        let k = onButton ? 0.5 : 1 - 0.15 * v
         dot.transform = CATransform3DMakeScale(k, k, 1)
+        dot.shadowOpacity = onButton ? 0.35 : 0.7
         CATransaction.commit()
     }
 
@@ -913,110 +1089,133 @@ private final class PickerPanel: NSPanel {
         return ctx.makeImage()
     }
 
-    private static func lineHeight(_ f: NSFont) -> CGFloat { ceil(f.ascender - f.descender + f.leading) }
+    /// Line height the text system actually uses (SF Rounded is taller than ascender - descender).
+    private static func lineHeight(_ f: NSFont) -> CGFloat { ceil(NSLayoutManager().defaultLineHeight(for: f)) }
 
-    /// Tile content (icon, app name, title) centered vertically in the area below `top`.
-    private static func tileImage(_ w: WindowInfo, size: CGSize, s: CGFloat, scale: CGFloat, top: CGFloat) -> CGImage? {
+    /// SF Symbol tinted with `color`, centered in a `side`×`side` box (natural symbol size).
+    private static func drawSymbol(_ name: String, pointSize: CGFloat, weight: NSFont.Weight, color: NSColor, in box: CGRect) {
+        guard let base = NSImage(systemSymbolName: name, accessibilityDescription: nil),
+              let img = base.withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: pointSize, weight: weight))
+        else { return }
+        let sz = img.size
+        let r = CGRect(x: box.midX - sz.width / 2, y: box.midY - sz.height / 2, width: sz.width, height: sz.height)
+        // Tint: draw into its own transparency layer, then fill with sourceAtop.
+        guard let ctx = NSGraphicsContext.current?.cgContext else { return }
+        ctx.saveGState()
+        ctx.beginTransparencyLayer(in: r.insetBy(dx: -2, dy: -2), auxiliaryInfo: nil)
+        img.draw(in: r, from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: true, hints: nil)
+        color.setFill()
+        r.insetBy(dx: -2, dy: -2).fill(using: .sourceAtop)
+        ctx.endTransparencyLayer()
+        ctx.restoreGState()
+    }
+
+    private static func symbolImage(_ name: String, side: CGFloat, pointSize: CGFloat, scale: CGFloat) -> CGImage? {
+        makeImage(size: CGSize(width: side, height: side), scale: scale) { rect in
+            drawSymbol(name, pointSize: pointSize, weight: .semibold, color: .white, in: rect)
+        }
+    }
+
+    /// Card content: icon (top-left, soft shadow), app name, window title (2 lines).
+    private static func tileImage(_ w: WindowInfo, size: CGSize, s: CGFloat, scale: CGFloat) -> CGImage? {
         makeImage(size: size, scale: scale) { rect in
-            let center = NSMutableParagraphStyle()
-            center.alignment = .center
-            center.lineBreakMode = .byTruncatingTail
+            let trunc = NSMutableParagraphStyle()
+            trunc.lineBreakMode = .byTruncatingTail
             let wrap = NSMutableParagraphStyle()
-            wrap.alignment = .center
             wrap.lineBreakMode = .byWordWrapping
 
-            let nameFont = NSFont.boldSystemFont(ofSize: max(10, 15 * s))
-            let titleFont = NSFont.systemFont(ofSize: max(9, 13 * s))
-            let nameAttrs: [NSAttributedString.Key: Any] = [.font: nameFont, .foregroundColor: NSColor.white, .paragraphStyle: center]
-            let titleAttrs: [NSAttributedString.Key: Any] = [.font: titleFont, .foregroundColor: NSColor(white: 1, alpha: 0.75), .paragraphStyle: wrap]
-
-            let pad = 12 * s
-            let textW = rect.width - 2 * pad
-            let iconSide = 64 * s
-            let nameH = lineHeight(nameFont)
+            let f = min(1, s)                      // type and icon never grow past the spec sizes
+            let nameFont = Theme.font(max(10, 15 * f), .semibold)
+            let titleFont = Theme.font(max(9, 12.5 * f))
+            let nameAttrs: [NSAttributedString.Key: Any] = [.font: nameFont, .foregroundColor: Theme.textPrimary, .paragraphStyle: trunc]
+            let titleAttrs: [NSAttributedString.Key: Any] = [.font: titleFont, .foregroundColor: Theme.textSecondary, .paragraphStyle: wrap]
             let opts: NSString.DrawingOptions = [.usesLineFragmentOrigin, .truncatesLastVisibleLine]
-            var titleH: CGFloat = 0
-            if !w.title.isEmpty {
-                let maxH = lineHeight(titleFont) * 2 + 1
-                let measured = (w.title as NSString).boundingRect(with: CGSize(width: textW, height: maxH), options: opts, attributes: titleAttrs)
-                titleH = min(maxH, ceil(measured.height))
-            }
-            let gapIcon = 10 * s, gapTitle = 4 * s
-            let contentH = iconSide + gapIcon + nameH + (titleH > 0 ? gapTitle + titleH : 0)
-            var y = max(top + 2 * s, (top + (rect.height - top - contentH) / 2).rounded())
 
+            let pad = (18 * s).rounded()
+            let iconSide = min(72, (68 * s).rounded())
+            let textW = rect.width - 2 * pad
             if let icon = w.icon {
-                let r = CGRect(x: ((rect.width - iconSide) / 2).rounded(), y: y, width: iconSide, height: iconSide)
-                icon.draw(in: r, from: .zero, operation: .sourceOver, fraction: w.isMinimized ? 0.55 : 1,
+                NSGraphicsContext.saveGraphicsState()
+                let sh = NSShadow()
+                sh.shadowColor = NSColor(white: 0, alpha: 0.45)
+                sh.shadowBlurRadius = 8 * s
+                sh.shadowOffset = NSSize(width: 0, height: -3 * s)
+                sh.set()
+                icon.draw(in: CGRect(x: pad - 4 * s, y: pad - 4 * s, width: iconSide, height: iconSide),
+                          from: .zero, operation: .sourceOver, fraction: w.isMinimized ? 0.5 : 1,
                           respectFlipped: true, hints: [.interpolation: NSNumber(value: NSImageInterpolation.high.rawValue)])
+                NSGraphicsContext.restoreGraphicsState()
             }
-            y += iconSide + gapIcon
+            var y = pad + iconSide - 4 * s + 10 * s
+            let nameH = lineHeight(nameFont)
             (w.appName as NSString).draw(with: CGRect(x: pad, y: y, width: textW, height: nameH), options: opts, attributes: nameAttrs)
-            y += nameH + gapTitle
-            if titleH > 0 {
-                (w.title as NSString).draw(with: CGRect(x: pad, y: y, width: textW, height: titleH), options: opts, attributes: titleAttrs)
+            y += nameH + 2 * s
+            if !w.title.isEmpty {
+                let maxH = min(lineHeight(titleFont) * 2 + 2, rect.height - y - 4 * s)
+                if maxH > lineHeight(titleFont) * 0.9 {
+                    (w.title as NSString).draw(with: CGRect(x: pad, y: y, width: textW, height: maxH), options: opts, attributes: titleAttrs)
+                }
             }
             if w.isMinimized {
-                let badgeAttrs: [NSAttributedString.Key: Any] = [.font: NSFont.systemFont(ofSize: max(8, 11 * s), weight: .medium),
-                                                                 .foregroundColor: NSColor(white: 1, alpha: 0.6)]
+                // small glass pill to the right of the icon
+                let attrs: [NSAttributedString.Key: Any] = [.font: Theme.font(max(8, 11 * s), .medium), .foregroundColor: Theme.textSecondary]
                 let str = "свёрнуто" as NSString
-                let bs = str.size(withAttributes: badgeAttrs)
-                str.draw(at: CGPoint(x: rect.width - bs.width - 10 * s, y: 8 * s), withAttributes: badgeAttrs)
+                let ts = str.size(withAttributes: attrs)
+                let pill = CGRect(x: pad + iconSide + 4 * s, y: pad + iconSide - 4 * s - ts.height - 8 * s,
+                                  width: ts.width + 14 * s, height: ts.height + 6 * s)
+                let path = NSBezierPath(roundedRect: pill, xRadius: pill.height / 2, yRadius: pill.height / 2)
+                NSColor(white: 1, alpha: 0.10).setFill()
+                path.fill()
+                Theme.hairline.setStroke()
+                path.lineWidth = 1
+                path.stroke()
+                str.draw(at: CGPoint(x: pill.minX + 7 * s, y: pill.minY + 3 * s), withAttributes: attrs)
             }
         }
     }
 
-    /// Dark glyph for a traffic-light button (×, –, ⤢), drawn as vector strokes.
-    private static func symbolImage(_ kind: PickerButtonKind, d: CGFloat, scale: CGFloat) -> CGImage? {
-        makeImage(size: CGSize(width: d, height: d), scale: scale) { _ in
-            let ink = NSColor(white: 0, alpha: 0.62)
-            let lw = max(1.5, d * 0.09)
-            switch kind {
-            case .close:
-                let a = d * 0.34, b = d * 0.66
-                let p = NSBezierPath()
-                p.lineWidth = lw
-                p.lineCapStyle = .round
-                p.move(to: CGPoint(x: a, y: a)); p.line(to: CGPoint(x: b, y: b))
-                p.move(to: CGPoint(x: a, y: b)); p.line(to: CGPoint(x: b, y: a))
-                ink.setStroke()
-                p.stroke()
-            case .minimize:
-                let p = NSBezierPath()
-                p.lineWidth = lw
-                p.lineCapStyle = .round
-                p.move(to: CGPoint(x: d * 0.28, y: d / 2)); p.line(to: CGPoint(x: d * 0.72, y: d / 2))
-                ink.setStroke()
-                p.stroke()
-            case .fullscreen:
-                // Two triangles pointing to the top-left and bottom-right corners (macOS style).
-                let t1 = NSBezierPath()
-                t1.move(to: CGPoint(x: d * 0.28, y: d * 0.28))
-                t1.line(to: CGPoint(x: d * 0.56, y: d * 0.28))
-                t1.line(to: CGPoint(x: d * 0.28, y: d * 0.56))
-                t1.close()
-                let t2 = NSBezierPath()
-                t2.move(to: CGPoint(x: d * 0.72, y: d * 0.72))
-                t2.line(to: CGPoint(x: d * 0.44, y: d * 0.72))
-                t2.line(to: CGPoint(x: d * 0.72, y: d * 0.44))
-                t2.close()
-                ink.setFill()
-                t1.fill()
-                t2.fill()
-            }
+    /// «Окна» + count pill, shown above the grid.
+    private static func headerImage(count: Int, scale: CGFloat) -> CGImage? {
+        let titleAttrs: [NSAttributedString.Key: Any] = [.font: Theme.font(22, .bold), .foregroundColor: Theme.textPrimary]
+        let countAttrs: [NSAttributedString.Key: Any] = [.font: Theme.font(13, .semibold), .foregroundColor: Theme.textSecondary]
+        let title = "Окна" as NSString, num = "\(count)" as NSString
+        let ts = title.size(withAttributes: titleAttrs), cs = num.size(withAttributes: countAttrs)
+        let pillW = max(cs.width + 16, 26), pillH = cs.height + 6
+        let size = CGSize(width: ceil(ts.width + 10 + pillW) + 2, height: ceil(ts.height) + 2)
+        return makeImage(size: size, scale: scale) { rect in
+            title.draw(at: CGPoint(x: 1, y: 1), withAttributes: titleAttrs)
+            let pill = CGRect(x: 1 + ts.width + 10, y: (rect.height - pillH) / 2 + 1, width: pillW, height: pillH)
+            let p = NSBezierPath(roundedRect: pill, xRadius: pillH / 2, yRadius: pillH / 2)
+            NSColor(white: 1, alpha: 0.10).setFill()
+            p.fill()
+            Theme.hairline.setStroke()
+            p.lineWidth = 1
+            p.stroke()
+            num.draw(at: CGPoint(x: pill.midX - cs.width / 2, y: pill.midY - cs.height / 2), withAttributes: countAttrs)
         }
     }
 
+    /// Bottom glass pill with a hand glyph and the hint text.
     private static func hintImage(scale: CGFloat) -> CGImage? {
-        let attrs: [NSAttributedString.Key: Any] = [.font: NSFont.systemFont(ofSize: 17, weight: .medium),
-                                                    .foregroundColor: NSColor(white: 1, alpha: 0.85)]
+        let attrs: [NSAttributedString.Key: Any] = [.font: Theme.font(13, .medium), .foregroundColor: Theme.textSecondary]
         let text = hintText as NSString
         let ts = text.size(withAttributes: attrs)
-        let size = CGSize(width: ceil(ts.width) + 40, height: ceil(ts.height) + 18)
+        let glyph: CGFloat = 16, padX: CGFloat = 16, gapG: CGFloat = 8
+        let h = max(34, ceil(ts.height) + 16)
+        let size = CGSize(width: ceil(padX + glyph + gapG + ts.width + padX), height: h)
         return makeImage(size: size, scale: scale) { rect in
-            NSColor(white: 0, alpha: 0.4).setFill()
-            NSBezierPath(roundedRect: rect, xRadius: rect.height / 2, yRadius: rect.height / 2).fill()
-            text.draw(at: CGPoint(x: 20, y: 9), withAttributes: attrs)
+            let pill = rect.insetBy(dx: 0.5, dy: 0.5)
+            let p = NSBezierPath(roundedRect: pill, xRadius: pill.height / 2, yRadius: pill.height / 2)
+            NSColor(white: 0, alpha: 0.30).setFill()
+            p.fill()
+            NSColor(white: 1, alpha: 0.07).setFill()
+            p.fill()
+            Theme.hairline.setStroke()
+            p.lineWidth = 1
+            p.stroke()
+            drawSymbol("hand.point.up.left", pointSize: 13, weight: .medium, color: Theme.textSecondary,
+                       in: CGRect(x: padX, y: 0, width: glyph, height: rect.height))
+            text.draw(at: CGPoint(x: padX + glyph + gapG, y: (rect.height - ts.height) / 2), withAttributes: attrs)
         }
     }
 }

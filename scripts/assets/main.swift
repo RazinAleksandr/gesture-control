@@ -1,19 +1,85 @@
-// Renders README images from the app's own drawing code (no camera, no real windows):
-//   docs/hud.png — camera HUD with a hand skeleton; frames for docs/demo.gif (assembled by scripts/render-assets.sh)
+// Renders README images from the app's own drawing code (no camera, no real windows).
+//   render-assets <docs dir> <frames dir> <icon 512 png>
+//   → docs/banner.png, docs/hud.png, docs/hud-collapsed.png, docs/guide.png, frames for docs/demo.gif
 import AppKit
+import SwiftUI
 
 setenv("WINDOW_PICKER_FAKE", "6", 1)   // demo windows instead of the user's real ones
 let root = URL(fileURLWithPath: CommandLine.arguments[1])
 let frames = URL(fileURLWithPath: CommandLine.arguments[2])
+let iconPath = CommandLine.arguments[3]
 try? FileManager.default.createDirectory(at: frames, withIntermediateDirectories: true)
 
+func snapshot<V: View>(_ view: V, to url: URL) {
+    let host = NSHostingView(rootView: view)
+    host.frame = CGRect(origin: .zero, size: host.fittingSize)
+    host.layoutSubtreeIfNeeded()
+    guard let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { return }
+    host.cacheDisplay(in: host.bounds, to: rep)
+    try? rep.representation(using: .png, properties: [:])?.write(to: url)
+}
+
+struct Chip: View {
+    let text: String
+    var body: some View {
+        Text(text)
+            .font(.system(size: 15, weight: .medium, design: .rounded))
+            .foregroundStyle(.white.opacity(0.85))
+            .padding(.horizontal, 14).padding(.vertical, 7)
+            .background(Capsule().fill(.white.opacity(0.08)).overlay(Capsule().strokeBorder(.white.opacity(0.16), lineWidth: 1)))
+    }
+}
+
+struct Banner: View {
+    let icon: NSImage
+    let shot: NSImage
+    var body: some View {
+        ZStack {
+            LinearGradient(colors: [Color(red: 0.03, green: 0.03, blue: 0.07), Color(red: 0.08, green: 0.04, blue: 0.16)],
+                           startPoint: .topLeading, endPoint: .bottomTrailing)
+            Circle().fill(Color.gcA.opacity(0.45)).frame(width: 520).blur(radius: 140).offset(x: -460, y: -220)
+            Circle().fill(Color.gcC.opacity(0.35)).frame(width: 560).blur(radius: 160).offset(x: 520, y: 240)
+            HStack(spacing: 56) {
+                VStack(alignment: .leading, spacing: 18) {
+                    Image(nsImage: icon).resizable().frame(width: 112, height: 112)
+                        .shadow(color: .gcB.opacity(0.6), radius: 30, y: 10)
+                    Text("Gesture Control")
+                        .font(.system(size: 64, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                    Text("Control your Mac with your hand.\nJust the camera. Fully on-device.")
+                        .font(.system(size: 24, weight: .regular, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.7))
+                        .lineSpacing(4)
+                    HStack(spacing: 10) {
+                        Chip(text: "macOS 14+"); Chip(text: "Apple Vision"); Chip(text: "On-device"); Chip(text: "Open source")
+                    }
+                    .padding(.top, 6)
+                }
+                Image(nsImage: shot).resizable().aspectRatio(contentMode: .fit)
+                    .frame(width: 600)
+                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(.white.opacity(0.16), lineWidth: 1))
+                    .shadow(color: .black.opacity(0.6), radius: 40, y: 20)
+                    .shadow(color: .gcB.opacity(0.35), radius: 60)
+                    .rotation3DEffect(.degrees(-10), axis: (x: 0, y: 1, z: 0), perspective: 0.6)
+            }
+        }
+        .frame(width: 1280, height: 520)
+        .clipped()
+        .environment(\.colorScheme, .dark)
+    }
+}
+
 MainActor.assumeIsolated {
-    // gesture cards
+    // camera HUD, expanded and collapsed
     let hud = HUD(session: nil)
-    let c = CGPoint(x: 0.5, y: 0.47)
-    let s: CGFloat = 0.2
-    hud.renderDebugPNG(to: root.appendingPathComponent("hud.png"),
-                       hand: SelfTest.hand(at: c, fingers: SelfTest.open, s: s, t: 0), mode: .picker, label: "раскрытая ладонь")
+    let hand = SelfTest.hand(at: CGPoint(x: 0.5, y: 0.47), fingers: SelfTest.open, s: 0.2, t: 0)
+    hud.renderDebugPNG(to: root.appendingPathComponent("hud.png"), hand: hand, mode: .picker, label: "Окна: 6")
+    hud.renderDebugPNG(to: root.appendingPathComponent("hud-collapsed.png"), hand: hand, mode: .picker, label: "Окна: 6",
+                       collapsed: true)
+
+    // gesture guide
+    GestureGuide.renderPNG(to: root.appendingPathComponent("guide.png"))
 
     // demo animation of the window picker
     let picker = WindowPicker()
@@ -29,8 +95,8 @@ MainActor.assumeIsolated {
         for i in 1...fill { path.append((p, CGFloat(i) / CGFloat(fill))) }
         for _ in 0..<after { path.append((p, 1)) }
     }
-    let start = CGPoint(x: 0.12, y: 0.78), safari = CGPoint(x: 0.25, y: 0.38), terminal = CGPoint(x: 0.585, y: 0.38)
-    let notes = CGPoint(x: 0.75, y: 0.40), calendar = CGPoint(x: 0.583, y: 0.58), mailClose = CGPoint(x: 0.357, y: 0.509)
+    let start = CGPoint(x: 0.12, y: 0.80), safari = CGPoint(x: 0.24, y: 0.42), terminal = CGPoint(x: 0.587, y: 0.42)
+    let notes = CGPoint(x: 0.76, y: 0.43), calendar = CGPoint(x: 0.587, y: 0.61), mailClose = CGPoint(x: 0.473, y: 0.545)
     move(start, safari, 14); move(safari, terminal, 14); move(terminal, notes, 8); move(notes, calendar, 12)
     hold(calendar, wait: 6, fill: 18, after: 6)
     move(calendar, mailClose, 14)
@@ -38,6 +104,15 @@ MainActor.assumeIsolated {
     for (i, (p, d)) in path.enumerated() {
         picker.renderDebugPNG(to: frames.appendingPathComponent(String(format: "f%03d.png", i)),
                               pointer: p, size: CGSize(width: 1728, height: 1117), dwellProgress: d)
+    }
+
+    // banner: icon + title + a picker frame
+    let shot = NSImage(contentsOf: frames.appendingPathComponent(String(format: "f%03d.png", 58)))!
+    let renderer = ImageRenderer(content: Banner(icon: NSImage(contentsOfFile: iconPath)!, shot: shot))
+    renderer.scale = 2
+    if let cg = renderer.cgImage {
+        try? NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:])?
+            .write(to: root.appendingPathComponent("banner.png"))
     }
     print("frames: \(path.count)")
 }
